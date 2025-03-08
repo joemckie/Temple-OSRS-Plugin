@@ -35,6 +35,13 @@ public interface TempleOSRSConfig extends Config
 	)
 	String compOptions = "compOptions";
 
+	@ConfigSection(
+		name = "Collection Log",
+		description = "Collection Log Options",
+		position = 40
+	)
+	String clogOptions = "clogOptions";
+
 	@ConfigItem(
 		keyName = "autocomplete",
 		name = "Autocomplete",
@@ -234,4 +241,18 @@ public interface TempleOSRSConfig extends Config
 		description = ""
 	)
 	void setCompetitionWatchlist(String key);
+
+	@ConfigItem(
+			keyName = "clogsyncbutton",
+			name = "Collection Log Update Button",
+			description = "Add a button to the collection log interface to update your collection log on TempleOSRS",
+			position = 1,
+			section = clogOptions
+	)
+	default boolean clogSyncButton()
+	{
+		return true;
+	}
+
+
 }
