@@ -30,7 +30,6 @@ import com.google.gson.JsonParseException; // Collection Log
 import com.google.inject.Provides;
 import com.templeosrs.ui.TempleOSRSPanel;
 import com.templeosrs.ui.clans.TempleClans;
-import com.templeosrs.ui.collections.TempleCollections; // Collection Log
 import com.templeosrs.ui.competitions.TempleCompetitions;
 import com.templeosrs.ui.ranks.TempleRanks;
 import com.templeosrs.util.TempleService;
@@ -88,8 +87,6 @@ public class TempleOSRSPlugin extends Plugin {
     public TempleClans clans;
 
     public TempleCompetitions competitions;
-
-    public TempleCollections collections;
 
     public TempleOSRSPanel panel;
 
