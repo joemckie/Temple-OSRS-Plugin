@@ -71,7 +71,6 @@ public class SyncButtonManager {
     private static final int FONT_COLOUR_ACTIVE = 0xffffff;
     private static final int CLOSE_BUTTON_OFFSET = 28;
     private static final int BUTTON_WIDTH = 60;
-    ;
     private static final int BUTTON_OFFSET = CLOSE_BUTTON_OFFSET + 5;
 
     private final Client client;

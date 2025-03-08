@@ -455,7 +455,7 @@ public class TempleOSRSPlugin extends Plugin {
      * Parse the enums and structs in the cache to figure out which item ids
      * exist in the collection log. This can be diffed with the manifest to
      * determine the item ids that need to be appended to the end of the
-     * bitset we send to the Embargo server.
+     * bitset we send to the TempleOSRS server.
      */
     private HashSet<Integer> parseCacheForClog() {
         HashSet<Integer> itemIds = new HashSet<>();
@@ -606,7 +606,7 @@ public class TempleOSRSPlugin extends Plugin {
                 tickCollectionLogScriptFired + 2 > client.getTickCount()) {
             tickCollectionLogScriptFired = -1;
             if (manifest == null) {
-                client.addChatMessage(ChatMessageType.CONSOLE, "Embargo", "Failed to sync collection log. Try restarting the Embargo plugin.", "Embargo");
+                client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Failed to sync collection log. Try restarting the TempleOSRS plugin.", "TempleOSRS");
                 return;
             }
             scheduledExecutorService.execute(this::submitTask);
