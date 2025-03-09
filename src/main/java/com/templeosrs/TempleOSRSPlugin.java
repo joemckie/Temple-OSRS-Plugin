@@ -101,6 +101,7 @@ public class TempleOSRSPlugin extends Plugin {
     private static final int SECONDS_BETWEEN_MANIFEST_CHECKS = 1200;
     private final int VARBITS_ARCHIVE_ID = 14;
     private final String CONFIG_GROUP = "TempleOSRS";
+    private static final String CLOG_SYNC_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
     private static final String MANIFEST_URL = "https://sync.runescape.wiki/runelite/manifest";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
@@ -396,6 +397,7 @@ public class TempleOSRSPlugin extends Plugin {
 
     private void checkManifest() {
         Request request = new Request.Builder()
+                .addHeader("User-Agent", CLOG_SYNC_USER_AGENT)
                 .url(MANIFEST_URL)
                 .build();
         okHttpClient.newCall(request).enqueue(new Callback() {
