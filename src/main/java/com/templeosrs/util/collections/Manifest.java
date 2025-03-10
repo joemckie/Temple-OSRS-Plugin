@@ -32,7 +32,7 @@ import java.util.ArrayList;
 @Data
 public class Manifest
 {
-    final float version = -1;
+    final int version = 1;
     public final int[] varbits = new int[0];
     public final int[] varps = new int[0];
     public final ArrayList<Integer> collections = new ArrayList<>();

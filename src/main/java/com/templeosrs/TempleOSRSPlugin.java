@@ -101,9 +101,9 @@ public class TempleOSRSPlugin extends Plugin {
     private static final int SECONDS_BETWEEN_MANIFEST_CHECKS = 1200;
     private final int VARBITS_ARCHIVE_ID = 14;
     private final String CONFIG_GROUP = "TempleOSRS";
-    private static final String CLOG_SYNC_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
+    private static final String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
-    private static final String MANIFEST_URL = "https://sync.runescape.wiki/runelite/manifest";
+    private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
@@ -183,8 +183,6 @@ public class TempleOSRSPlugin extends Plugin {
         if (config.playerLookup() && client != null) {
             menuManager.get().addPlayerMenuItem(TEMPLE);
         }
-
-        syncButtonManager.startUp(); // This will stay most likely
 
         // ------------------ Collection Log Related
         clientThread.invoke(() -> {
@@ -362,11 +360,12 @@ public class TempleOSRSPlugin extends Plugin {
         PlayerDataSubmission submission = new PlayerDataSubmission(
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
-                lastAccount,
+                client.getAccountHash(),
                 delta
         );
 
         Request request = new Request.Builder()
+                .addHeader("User-Agent", PLUGIN_USER_AGENT)
                 .url(SUBMIT_URL)
                 .post(RequestBody.create(JSON, gson.toJson(submission)))
                 .build();
@@ -397,7 +396,7 @@ public class TempleOSRSPlugin extends Plugin {
 
     private void checkManifest() {
         Request request = new Request.Builder()
-                .addHeader("User-Agent", CLOG_SYNC_USER_AGENT)
+                .addHeader("User-Agent", PLUGIN_USER_AGENT)
                 .url(MANIFEST_URL)
                 .build();
         okHttpClient.newCall(request).enqueue(new Callback() {
