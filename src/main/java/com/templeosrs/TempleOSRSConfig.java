@@ -79,6 +79,15 @@ public interface TempleOSRSConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "showSidebar",
+		name = "Show sidebar icon",
+		description = "Display TempleOSRS plugin in the sidebar.",
+		position = 4,
+	    section = generalOptions
+	)
+	default boolean showSidebar() { return true; }
+
+	@ConfigItem(
 		keyName = "defaultPlayer",
 		name = "Default Player",
 		description = "Default player loaded on startup",
