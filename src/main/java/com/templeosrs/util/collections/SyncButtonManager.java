@@ -39,6 +39,8 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.eventbus.Subscribe;
 
+import static java.lang.Math.round;
+
 @Slf4j
 public class SyncButtonManager {
 
@@ -72,6 +74,7 @@ public class SyncButtonManager {
     private static final int CLOSE_BUTTON_OFFSET = 28;
     private static final int BUTTON_WIDTH = 60;
     private static final int BUTTON_OFFSET = CLOSE_BUTTON_OFFSET + 5;
+    private int lastAttemptedUpdate = -1;
 
     private final Client client;
     private final ClientThread clientThread;
@@ -135,6 +138,12 @@ public class SyncButtonManager {
     }
 
     void onButtonClick() {
+        if (lastAttemptedUpdate != -1 && lastAttemptedUpdate + 50 > client.getTickCount()) {
+            client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Last update within 30 seconds. You can update again in " + round((lastAttemptedUpdate + 50 - client.getTickCount()) * 0.6) + " seconds.", "TempleOSRS");
+            return;
+        }
+        lastAttemptedUpdate = client.getTickCount();
+
         setSyncAllowed(true);
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);

@@ -37,15 +37,13 @@ import java.util.Map;
 @AllArgsConstructor
 public class PlayerData
 {
-    public Map<Integer, Integer> varb = new HashMap<>();
-    public Map<Integer, Integer> varp = new HashMap<>();
-    public Map<String, Integer> level = new HashMap<>();
     public Integer collectionLogItemCount = null;
     public String collectionLogSlots = "";
+    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
 
     public boolean isEmpty()
     {
-        return varb.isEmpty() && varp.isEmpty() && level.isEmpty() && collectionLogSlots.isEmpty() && collectionLogItemCount == null;
+        return collectionLogSlots.isEmpty() && collectionLogItemCount == null;
     }
 
     public void clearCollectionLog()
