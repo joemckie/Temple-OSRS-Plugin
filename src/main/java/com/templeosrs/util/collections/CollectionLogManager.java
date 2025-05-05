@@ -51,26 +51,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static net.runelite.client.util.Text.removeTags;
-
+@Singleton
 public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
     private final String CONFIG_GROUP = "TempleOSRS";
     private static final String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
-    private static final Pattern NEW_COLLECTION_LOG_ITEM_PATTERN = Pattern.compile("New item added to your collection log: (.*)");
-
     private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
+    private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
 
     private Manifest manifest;
-    private Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
+    private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
     // Keeps track of what collection log slots the user has set and map for their counts
@@ -87,7 +82,10 @@ public class CollectionLogManager {
     private SyncButtonManager syncButtonManager;
 
     private final Multiset<Integer> inventoryItems = HashMultiset.create();
-    private final HashSet<String> obtainedItemNames = new HashSet<>();
+
+    @Getter
+    @VisibleForTesting
+    protected final HashSet<String> obtainedItemNames = new HashSet<>();
 
     @Inject
     private OkHttpClient okHttpClient;
@@ -115,8 +113,13 @@ public class CollectionLogManager {
     @Inject
     private EventBus eventBus;
 
+    @Inject
+    private CollectionLogChatMessageSubscriber collectionLogChatMessageSubscriber;
+
     public void startUp(SyncButtonManager mainSyncButtonManager) {
         eventBus.register(this);
+
+        collectionLogChatMessageSubscriber.startUp();
 
         // I'm not sure if this is how passing the same instance of a SyncButtonManager should be done, but it was the first solution that worked for me
         syncButtonManager = mainSyncButtonManager;
@@ -139,6 +142,8 @@ public class CollectionLogManager {
 
     public void shutDown() {
         eventBus.unregister(this);
+
+        collectionLogChatMessageSubscriber.shutDown();
 
         clogItemsBitSet.clear();
         clogItemsCountSet.clear();
@@ -219,21 +224,7 @@ public class CollectionLogManager {
         }
     }
 
-    @Subscribe
-    public void onChatMessage(ChatMessage chatMessage)
-    {
-        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
-            return;
-        }
 
-        Matcher matcher = NEW_COLLECTION_LOG_ITEM_PATTERN.matcher(chatMessage.getMessage());
-
-        if (matcher.matches()) {
-            String itemName = removeTags(matcher.group(1));
-
-            obtainedItemNames.add(itemName);
-        }
-    }
 
     @Subscribe
     private void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
@@ -498,11 +489,5 @@ public class CollectionLogManager {
         int msb = v.getMostSignificantBit();
         int mask = (1 << ((msb - lsb) + 1)) - 1;
         return (value >> lsb) & mask;
-    }
-
-    @VisibleForTesting
-    public HashSet<String> getObtainedItemNames()
-    {
-        return obtainedItemNames;
     }
 }
