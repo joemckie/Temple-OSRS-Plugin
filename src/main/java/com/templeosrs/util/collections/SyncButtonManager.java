@@ -36,7 +36,6 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.widgets.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.api.widgets.ComponentID;
 import net.runelite.client.eventbus.Subscribe;
 
 import static java.lang.Math.round;

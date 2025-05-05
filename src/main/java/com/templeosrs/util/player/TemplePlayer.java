@@ -1,6 +1,7 @@
 package com.templeosrs.util.player;
 
 import com.google.gson.Gson;
+
 import java.util.Objects;
 
 public class TemplePlayer

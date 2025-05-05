@@ -1,6 +1,7 @@
 package com.templeosrs.util.sync;
 
 import com.google.gson.Gson;
+
 import java.util.Objects;
 
 public class TempleSync

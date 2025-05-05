@@ -2,15 +2,15 @@ package com.templeosrs.ui.competitions;
 
 import com.google.common.base.Strings;
 import com.templeosrs.TempleOSRSConfig;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
+import net.runelite.client.util.Text;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import javax.swing.JComboBox;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
+
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
-import net.runelite.client.util.Text;
 
 public class TempleCompetitionWatchlist extends JPanel
 {

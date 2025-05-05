@@ -2,27 +2,20 @@ package com.templeosrs.ui.clans;
 
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.clan.TempleClanOverviewInfo;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.LinkBrowser;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
+import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Objects;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.EtchedBorder;
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
+
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
-import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.LinkBrowser;
 
 public class TempleClanOverview extends JPanel
 {

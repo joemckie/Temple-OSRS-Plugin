@@ -3,20 +3,15 @@ package com.templeosrs.ui.competitions;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.TempleHiscoreSkill;
 import com.templeosrs.util.comp.TempleCompetitionInfo;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.FlowLayout;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.EtchedBorder;
 import net.runelite.client.hiscore.HiscoreSkillType;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
+import java.awt.*;
 
 public class TempleCompetitionOverview extends JPanel
 {

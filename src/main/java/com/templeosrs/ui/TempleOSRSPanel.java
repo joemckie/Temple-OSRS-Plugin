@@ -31,29 +31,25 @@ import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.ui.clans.TempleClans;
 import com.templeosrs.ui.competitions.TempleCompetitions;
 import com.templeosrs.ui.ranks.TempleRanks;
-import java.awt.BorderLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.time.Instant;
-import javax.imageio.ImageIO;
-import javax.inject.Inject;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.JScrollPane;
-import javax.swing.border.EmptyBorder;
-import static net.runelite.client.RuneLite.SCREENSHOT_DIR;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
+
+import javax.imageio.ImageIO;
+import javax.inject.Inject;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.time.Instant;
+
+import static net.runelite.client.RuneLite.SCREENSHOT_DIR;
 
 public class TempleOSRSPanel extends PluginPanel
 {

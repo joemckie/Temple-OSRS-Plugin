@@ -2,20 +2,16 @@ package com.templeosrs.ui.clans;
 
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.clan.TempleClanAchievement;
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridLayout;
-import java.util.List;
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.border.EtchedBorder;
-import javax.swing.border.TitledBorder;
 import net.runelite.client.hiscore.HiscoreSkillType;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
+
+import javax.swing.*;
+import javax.swing.border.EtchedBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.util.List;
+
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
 
 public class TempleClanAchievements extends JPanel

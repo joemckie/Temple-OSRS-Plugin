@@ -24,31 +24,46 @@
  */
 package com.templeosrs.util.collections;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Multisets;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
+import com.templeosrs.TempleOSRSConfig;
+import lombok.Getter;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.events.*;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.game.ItemManager;
 import okhttp3.*;
 
 import javax.inject.Inject;
-import java.io.*;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class CollectionLogManager {
+import static net.runelite.client.util.Text.removeTags;
 
+@Singleton
+public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
     private final String CONFIG_GROUP = "TempleOSRS";
     private static final String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
+
+    private static final Pattern NEW_COLLECTION_LOG_ITEM_PATTERN = Pattern.compile("New item added to your collection log: (.*)");
 
     private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
@@ -72,6 +87,9 @@ public class CollectionLogManager {
 
     private SyncButtonManager syncButtonManager;
 
+    private final Multiset<Integer> inventoryItems = HashMultiset.create();
+    private final HashSet<String> obtainedItemNames = new HashSet<>();
+
     @Inject
     private OkHttpClient okHttpClient;
 
@@ -81,20 +99,22 @@ public class CollectionLogManager {
     @Inject
     private Gson gson;
 
-    private final Client client;
-    private final ClientThread clientThread;
-    private final EventBus eventBus;
+    @Inject
+    private TempleOSRSConfig config;
 
     @Inject
-    private CollectionLogManager(
-            Client client,
-            ClientThread clientThread,
-            EventBus eventBus
-    ) {
-        this.client = client;
-        this.clientThread = clientThread;
-        this.eventBus = eventBus;
-    }
+    private ItemManager itemManager;
+
+    @Getter
+    @Inject
+    private Client client;
+
+    @Getter
+    @Inject
+    private ClientThread clientThread;
+
+    @Inject
+    private EventBus eventBus;
 
     public void startUp(SyncButtonManager mainSyncButtonManager) {
         eventBus.register(this);
@@ -176,7 +196,9 @@ public class CollectionLogManager {
         return result;
     }
 
-    //CollectionLog Subscribe
+    /**
+     * Handles updating the collection log after the Temple sync button has been pressed.
+     */
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
         if (syncButtonManager.isSyncAllowed() && preFired.getScriptId() == 4100) {
@@ -196,6 +218,61 @@ public class CollectionLogManager {
                 clogItemsCountSet.put(idx, itemCount);
             }
         }
+    }
+
+    @Subscribe
+    public void onChatMessage(ChatMessage chatMessage)
+    {
+        if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
+            return;
+        }
+
+        Matcher matcher = NEW_COLLECTION_LOG_ITEM_PATTERN.matcher(chatMessage.getMessage());
+
+        if (matcher.matches()) {
+            String itemName = removeTags(matcher.group(1));
+
+            obtainedItemNames.add(itemName);
+        }
+    }
+
+    @Subscribe
+    private void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
+    {
+        if (itemContainerChanged.getContainerId() != InventoryID.INV) {
+            return;
+        }
+
+        ItemContainer inventory = itemContainerChanged.getItemContainer();
+        Multiset<Integer> currentInventoryItems = HashMultiset.create();
+
+        Arrays.stream(inventory.getItems()).forEach(
+                item -> currentInventoryItems.add(item.getId(), item.getQuantity())
+        );
+
+        Multiset<Integer> inventoryDifference = Multisets.difference(currentInventoryItems, inventoryItems);
+
+        for (Multiset.Entry<Integer> item : inventoryDifference.entrySet())
+        {
+            String itemName = itemManager.getItemComposition(item.getElement()).getName();
+            int itemId = item.getElement();
+            int itemCount = item.getCount();
+
+            if (obtainedItemNames.contains(itemName)) {
+                int index = lookupCollectionLogItemIndex(itemId);
+
+                System.out.println(itemId);
+                System.out.println(itemCount);
+                System.out.println(index);
+
+                clogItemsBitSet.set(index);
+                clogItemsCountSet.put(itemId, itemCount);
+                obtainedItemNames.remove(itemName);
+            }
+        }
+
+        inventoryItems.clear();
+        inventoryItems.addAll(currentInventoryItems);
     }
 
     synchronized public void submitTask() {
@@ -424,4 +501,9 @@ public class CollectionLogManager {
         return (value >> lsb) & mask;
     }
 
+    @VisibleForTesting
+    public HashSet<String> getObtainedItemNames()
+    {
+        return obtainedItemNames;
+    }
 }

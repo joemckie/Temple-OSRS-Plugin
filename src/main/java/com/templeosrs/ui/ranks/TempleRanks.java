@@ -36,22 +36,6 @@ import com.templeosrs.util.TempleService;
 import com.templeosrs.util.player.TemplePlayer;
 import com.templeosrs.util.player.TemplePlayerData;
 import com.templeosrs.util.player.TemplePlayerSkill;
-import java.awt.Dimension;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Objects;
-import javax.inject.Inject;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JMenuItem;
-import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
-import javax.swing.SwingUtilities;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.EtchedBorder;
 import net.runelite.api.Client;
 import net.runelite.client.hiscore.HiscoreSkillType;
 import net.runelite.client.ui.ColorScheme;
@@ -62,6 +46,16 @@ import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.LinkBrowser;
 import okhttp3.HttpUrl;
+
+import javax.inject.Inject;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
+import java.awt.*;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.Objects;
 
 public class TempleRanks extends PluginPanel
 {

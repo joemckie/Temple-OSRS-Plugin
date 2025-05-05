@@ -2,25 +2,21 @@ package com.templeosrs.ui.ranks;
 
 import com.google.common.collect.ImmutableList;
 import com.templeosrs.util.TempleHiscoreSkill;
-import static com.templeosrs.util.TempleHiscoreSkill.*;
 import com.templeosrs.util.player.TemplePlayer;
 import com.templeosrs.util.player.TemplePlayerData;
 import com.templeosrs.util.player.TemplePlayerSkill;
-import java.awt.Color;
-import java.awt.GridLayout;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import javax.inject.Inject;
-import javax.swing.BorderFactory;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.border.EtchedBorder;
 import net.runelite.client.hiscore.HiscoreSkillType;
 import net.runelite.client.ui.ColorScheme;
+
+import javax.inject.Inject;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.EtchedBorder;
+import java.awt.*;
+import java.util.*;
+import java.util.List;
+
+import static com.templeosrs.util.TempleHiscoreSkill.*;
 
 public class TempleActivity extends JPanel
 {
