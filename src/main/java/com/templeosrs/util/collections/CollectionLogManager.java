@@ -57,7 +57,6 @@ import java.util.stream.Collectors;
 
 import static net.runelite.client.util.Text.removeTags;
 
-@Singleton
 public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
     private final String CONFIG_GROUP = "TempleOSRS";
