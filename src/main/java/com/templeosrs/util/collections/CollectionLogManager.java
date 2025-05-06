@@ -83,6 +83,7 @@ public class CollectionLogManager {
     private int tickCollectionLogScriptFired = -1;
     private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
 
+    @Inject
     private SyncButtonManager syncButtonManager;
 
     @Getter
@@ -121,14 +122,11 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogItemContainerChangedSubscriber collectionLogItemContainerChangedSubscriber;
 
-    public void startUp(SyncButtonManager mainSyncButtonManager) {
+    public void startUp() {
         eventBus.register(this);
 
         collectionLogChatMessageSubscriber.startUp();
         collectionLogItemContainerChangedSubscriber.startUp();
-
-        // I'm not sure if this is how passing the same instance of a SyncButtonManager should be done, but it was the first solution that worked for me
-        syncButtonManager = mainSyncButtonManager;
 
         clientThread.invoke(() -> {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {

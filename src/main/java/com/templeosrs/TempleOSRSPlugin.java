@@ -144,7 +144,7 @@ public class TempleOSRSPlugin extends Plugin {
             syncButtonManager.startUp();
         }
 
-        clogManager.startUp(syncButtonManager);
+        clogManager.startUp();
     }
 
     @Override

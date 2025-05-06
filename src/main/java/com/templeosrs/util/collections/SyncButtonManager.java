@@ -26,6 +26,7 @@
 package com.templeosrs.util.collections;
 
 import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -41,6 +42,7 @@ import net.runelite.client.eventbus.Subscribe;
 import static java.lang.Math.round;
 
 @Slf4j
+@Singleton
 public class SyncButtonManager {
 
     private static final int COLLECTION_LOG_SETUP = 7797;
