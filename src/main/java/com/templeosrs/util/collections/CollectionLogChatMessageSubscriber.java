@@ -43,8 +43,6 @@ public class CollectionLogChatMessageSubscriber
         if (matcher.matches()) {
             String itemName = removeTags(matcher.group(1));
 
-            System.out.println(collectionLogManager);
-
             collectionLogManager.obtainedItemNames.add(itemName);
         }
     }

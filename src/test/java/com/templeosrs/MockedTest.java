@@ -4,6 +4,9 @@ import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
 import net.runelite.api.Client;
+import net.runelite.api.Item;
+import net.runelite.api.ItemComposition;
+import net.runelite.api.ItemContainer;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.game.ItemManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +24,15 @@ public class MockedTest {
 
     @Bind
     protected ItemManager itemManager = mock(ItemManager.class);
+
+    @Bind
+    protected ItemContainer itemContainer = mock(ItemContainer.class);
+
+    @Bind
+    protected ItemComposition itemComposition = mock(ItemComposition.class);
+
+    @Bind
+    protected Item item = mock(Item.class);
 
     @Bind
     protected TempleOSRSConfig templeOSRSConfig = mock(TempleOSRSConfig.class);

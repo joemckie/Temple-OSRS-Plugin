@@ -25,16 +25,12 @@
 package com.templeosrs.util.collections;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
-import com.google.common.collect.Multisets;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
 import lombok.Getter;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
-import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
@@ -69,19 +65,25 @@ public class CollectionLogManager {
     private int cyclesSinceSuccessfulCall = 0;
 
     // Keeps track of what collection log slots the user has set and map for their counts
-    private static final BitSet clogItemsBitSet = new BitSet();
-    private final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
+    @Getter
+    @VisibleForTesting
+    protected final BitSet clogItemsBitSet = new BitSet();
+
+    @Getter
+    @VisibleForTesting
+    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
 
     private static Integer clogItemsCount = null;
 
     // Map item ids to bit index in the bitset
-    private static final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
+    @Getter
+    @VisibleForTesting
+    private final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
+
     private int tickCollectionLogScriptFired = -1;
     private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
 
     private SyncButtonManager syncButtonManager;
-
-    private final Multiset<Integer> inventoryItems = HashMultiset.create();
 
     @Getter
     @VisibleForTesting
@@ -116,10 +118,14 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatMessageSubscriber collectionLogChatMessageSubscriber;
 
+    @Inject
+    private CollectionLogItemContainerChangedSubscriber collectionLogItemContainerChangedSubscriber;
+
     public void startUp(SyncButtonManager mainSyncButtonManager) {
         eventBus.register(this);
 
         collectionLogChatMessageSubscriber.startUp();
+        collectionLogItemContainerChangedSubscriber.startUp();
 
         // I'm not sure if this is how passing the same instance of a SyncButtonManager should be done, but it was the first solution that worked for me
         syncButtonManager = mainSyncButtonManager;
@@ -144,6 +150,7 @@ public class CollectionLogManager {
         eventBus.unregister(this);
 
         collectionLogChatMessageSubscriber.shutDown();
+        collectionLogItemContainerChangedSubscriber.shutDown();
 
         clogItemsBitSet.clear();
         clogItemsCountSet.clear();
@@ -187,7 +194,7 @@ public class CollectionLogManager {
      * @param itemId: The itemId to look up
      * @return The index of the bit that represents the given itemId, if it is in the map. -1 otherwise.
      */
-    private int lookupCollectionLogItemIndex(int itemId) {
+    protected int lookupCollectionLogItemIndex(int itemId) {
         // The map has not loaded yet, or failed to load.
         if (collectionLogItemIdToBitsetIndex.isEmpty()) {
             return -1;
@@ -222,47 +229,6 @@ public class CollectionLogManager {
                 clogItemsCountSet.put(idx, itemCount);
             }
         }
-    }
-
-
-
-    @Subscribe
-    private void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
-    {
-        if (itemContainerChanged.getContainerId() != InventoryID.INV) {
-            return;
-        }
-
-        ItemContainer inventory = itemContainerChanged.getItemContainer();
-        Multiset<Integer> currentInventoryItems = HashMultiset.create();
-
-        Arrays.stream(inventory.getItems()).forEach(
-                item -> currentInventoryItems.add(item.getId(), item.getQuantity())
-        );
-
-        Multiset<Integer> inventoryDifference = Multisets.difference(currentInventoryItems, inventoryItems);
-
-        for (Multiset.Entry<Integer> item : inventoryDifference.entrySet())
-        {
-            String itemName = itemManager.getItemComposition(item.getElement()).getName();
-            int itemId = item.getElement();
-            int itemCount = item.getCount();
-
-            if (obtainedItemNames.contains(itemName)) {
-                int index = lookupCollectionLogItemIndex(itemId);
-
-                System.out.println(itemId);
-                System.out.println(itemCount);
-                System.out.println(index);
-
-                clogItemsBitSet.set(index);
-                clogItemsCountSet.put(itemId, itemCount);
-                obtainedItemNames.remove(itemName);
-            }
-        }
-
-        inventoryItems.clear();
-        inventoryItems.addAll(currentInventoryItems);
     }
 
     synchronized public void submitTask() {
