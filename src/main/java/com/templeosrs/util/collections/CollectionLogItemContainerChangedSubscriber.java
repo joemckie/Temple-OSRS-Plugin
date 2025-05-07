@@ -3,6 +3,7 @@ package com.templeosrs.util.collections;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
@@ -13,6 +14,7 @@ import net.runelite.client.game.ItemManager;
 import javax.inject.Inject;
 import java.util.Arrays;
 
+@Slf4j
 public class CollectionLogItemContainerChangedSubscriber
 {
     @Inject
@@ -62,6 +64,7 @@ public class CollectionLogItemContainerChangedSubscriber
                 int index = collectionLogManager.lookupCollectionLogItemIndex(itemId);
 
                 collectionLogManager.clogItemsBitSet.set(index);
+                collectionLogManager.logItemsPendingSyncBitSet.set(index);
                 collectionLogManager.clogItemsCountSet.put(itemId, itemCount);
 
                 collectionLogManager.obtainedItemNames.remove(itemName);

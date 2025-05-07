@@ -64,20 +64,26 @@ public class CollectionLogManager {
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
-    // Keeps track of what collection log slots the user has set and map for their counts
+    /**
+     * Keeps track of what collection log slots the user has set
+     */
     @Getter
-    @VisibleForTesting
     protected final BitSet clogItemsBitSet = new BitSet();
 
+    /**
+     * Keeps track of what new collection log slots are awaiting a server sync
+     */
     @Getter
-    @VisibleForTesting
-    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
+    protected final BitSet logItemsPendingSyncBitSet = new BitSet();
 
-    private static Integer clogItemsCount = null;
+    /**
+     * Keeps track of the item count for each collection log item
+     */
+    @Getter
+    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
 
     // Map item ids to bit index in the bitset
     @Getter
-    @VisibleForTesting
     private final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
 
     private int tickCollectionLogScriptFired = -1;
@@ -87,7 +93,6 @@ public class CollectionLogManager {
     private SyncButtonManager syncButtonManager;
 
     @Getter
-    @VisibleForTesting
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
 
     @Inject
@@ -152,7 +157,6 @@ public class CollectionLogManager {
 
         clogItemsBitSet.clear();
         clogItemsCountSet.clear();
-        clogItemsCount = null;
         syncButtonManager.shutDown();
     }
 
@@ -180,7 +184,6 @@ public class CollectionLogManager {
             case CONNECTION_LOST:
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
-                clogItemsCount = null;
                 break;
         }
     }
@@ -215,7 +218,6 @@ public class CollectionLogManager {
             if (collectionLogItemIdToBitsetIndex.isEmpty()) {
                 return;
             }
-            clogItemsCount = collectionLogItemIdsFromCache.size();
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
@@ -284,8 +286,8 @@ public class CollectionLogManager {
 
         out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
         out.collectionLogCounts = clogItemsCountSet;
+        out.collectionLogItemCount = clogItemsBitSet.cardinality();
 
-        out.collectionLogItemCount = clogItemsCount;
         return out;
     }
 

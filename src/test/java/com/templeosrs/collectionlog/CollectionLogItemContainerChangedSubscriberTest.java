@@ -20,6 +20,7 @@ import java.util.BitSet;
 import java.util.HashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.*;
 
 public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
@@ -52,6 +53,7 @@ public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
         collectionLogItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
 
         assertEquals(new BitSet(), collectionLogManager.getClogItemsBitSet());
+        assertEquals(new BitSet(), collectionLogManager.getLogItemsPendingSyncBitSet());
         assertEquals(new HashMap<>(), collectionLogManager.getClogItemsCountSet());
     }
 
@@ -71,11 +73,12 @@ public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
         collectionLogItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
 
         assertEquals(new BitSet(), collectionLogManager.getClogItemsBitSet());
-        assertEquals(null, collectionLogManager.getClogItemsCountSet().get(ItemID.BONES));
+        assertEquals(new BitSet(), collectionLogManager.getLogItemsPendingSyncBitSet());
+        assertNull(collectionLogManager.getClogItemsCountSet().get(ItemID.BONES));
     }
 
     @Test
-    @DisplayName("Ensure the bitset and item counts are modified when inventory items are found in the obtained items list")
+    @DisplayName("Ensure the bitsets and item counts are modified when inventory items are found in the obtained items list")
     void addsToBitSetWhenInventoryItemsMatchObtainedItems()
     {
         final Item[] mockItems = {
@@ -97,6 +100,7 @@ public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
         expectedBitset.set(expectedIndex);
 
         assertEquals(expectedBitset, collectionLogManager.getClogItemsBitSet());
+        assertEquals(expectedBitset, collectionLogManager.getLogItemsPendingSyncBitSet());
         assertEquals(1, collectionLogManager.getClogItemsCountSet().get(ItemID.TWISTED_BOW));
     }
 
@@ -128,6 +132,7 @@ public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
         collectionLogItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
 
         assertEquals(expectedBitSet, collectionLogManager.getClogItemsBitSet());
+        assertEquals(expectedBitSet, collectionLogManager.getLogItemsPendingSyncBitSet());
         assertEquals(1, collectionLogManager.getClogItemsCountSet().get(ItemID.GRACEFUL_BOOTS));
 
         // Trigger another collection log event that has a duplicate name to an existing item in the inventory
@@ -148,6 +153,7 @@ public class CollectionLogItemContainerChangedSubscriberTest extends MockedTest
         collectionLogItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged2);
 
         assertEquals(expectedBitSet, collectionLogManager.getClogItemsBitSet());
+        assertEquals(expectedBitSet, collectionLogManager.getLogItemsPendingSyncBitSet());
         assertEquals(1, collectionLogManager.getClogItemsCountSet().get(ItemID.GRACEFUL_BOOTS_WYRM));
     }
 
