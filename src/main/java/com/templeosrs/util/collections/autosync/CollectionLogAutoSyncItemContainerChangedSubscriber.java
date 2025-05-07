@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.autosync;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
@@ -15,10 +15,10 @@ import javax.inject.Inject;
 import java.util.Arrays;
 
 @Slf4j
-public class CollectionLogItemContainerChangedSubscriber
+public class CollectionLogAutoSyncItemContainerChangedSubscriber
 {
     @Inject
-    private CollectionLogManager collectionLogManager;
+    private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
     private EventBus eventBus;
@@ -58,16 +58,10 @@ public class CollectionLogItemContainerChangedSubscriber
         {
             String itemName = itemManager.getItemComposition(item.getElement()).getName();
             int itemId = item.getElement();
-            int itemCount = item.getCount();
 
-            if (collectionLogManager.obtainedItemNames.contains(itemName)) {
-                int index = collectionLogManager.lookupCollectionLogItemIndex(itemId);
-
-                collectionLogManager.clogItemsBitSet.set(index);
-                collectionLogManager.logItemsPendingSyncBitSet.set(index);
-                collectionLogManager.clogItemsCountSet.put(itemId, itemCount);
-
-                collectionLogManager.obtainedItemNames.remove(itemName);
+            if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
+                collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
+                collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
             }
         }
 

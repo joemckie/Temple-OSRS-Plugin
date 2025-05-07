@@ -1,9 +1,9 @@
-package com.templeosrs.collectionlog;
+package com.templeosrs.collectionlog.autosync;
 
 import com.google.inject.testing.fieldbinder.Bind;
 import com.templeosrs.MockedTest;
-import com.templeosrs.util.collections.CollectionLogChatMessageSubscriber;
-import com.templeosrs.util.collections.CollectionLogManager;
+import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncChatMessageSubscriber;
+import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
 import org.junit.jupiter.api.DisplayName;
@@ -14,13 +14,13 @@ import java.util.HashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
-public class CollectionLogChatMessageSubscriberTest extends MockedTest
+public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
 {
     @Bind
-    protected final CollectionLogManager collectionLogManager = spy(CollectionLogManager.class);
+    protected final CollectionLogAutoSyncManager collectionLogAutoSyncManager = spy(CollectionLogAutoSyncManager.class);
 
     @Bind
-    protected final CollectionLogChatMessageSubscriber collectionLogChatMessageSubscriber = spy(CollectionLogChatMessageSubscriber.class);
+    protected final CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber = spy(CollectionLogAutoSyncChatMessageSubscriber.class);
 
     final String newCollectionLogItem = "Twisted bow";
     final String newCollectionLogItemMessage = String.format("New item added to your collection log: %s", newCollectionLogItem);
@@ -31,9 +31,9 @@ public class CollectionLogChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.CLAN_MESSAGE, newCollectionLogItemMessage);
 
-        collectionLogChatMessageSubscriber.onChatMessage(chatMessage);
+        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
 
-        assertEquals(new HashSet<>(), collectionLogManager.getObtainedItemNames());
+        assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getObtainedItemNames());
     }
 
     @Test
@@ -42,9 +42,9 @@ public class CollectionLogChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.GAMEMESSAGE, "Some message");
 
-        collectionLogChatMessageSubscriber.onChatMessage(chatMessage);
+        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
 
-        assertEquals(new HashSet<>(), collectionLogManager.getObtainedItemNames());
+        assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getObtainedItemNames());
     }
 
     @Test
@@ -53,13 +53,13 @@ public class CollectionLogChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.GAMEMESSAGE, newCollectionLogItemMessage);
 
-        collectionLogChatMessageSubscriber.onChatMessage(chatMessage);
+        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
 
         HashSet<String> expectedObtainedItems = new HashSet<>();
 
         expectedObtainedItems.add(newCollectionLogItem);
 
-        assertEquals(expectedObtainedItems, collectionLogManager.getObtainedItemNames());
+        assertEquals(expectedObtainedItems, collectionLogAutoSyncManager.getObtainedItemNames());
     }
 
     private ChatMessage buildChatMessage(ChatMessageType type, String message)

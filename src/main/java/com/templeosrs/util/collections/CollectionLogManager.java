@@ -24,17 +24,21 @@
  */
 package com.templeosrs.util.collections;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
+import com.templeosrs.TempleOSRSPlugin;
+import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
 import okhttp3.*;
 
@@ -49,6 +53,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Singleton
 public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
@@ -71,12 +76,6 @@ public class CollectionLogManager {
     protected final BitSet clogItemsBitSet = new BitSet();
 
     /**
-     * Keeps track of what new collection log slots are awaiting a server sync
-     */
-    @Getter
-    protected final BitSet logItemsPendingSyncBitSet = new BitSet();
-
-    /**
      * Keeps track of the item count for each collection log item
      */
     @Getter
@@ -87,13 +86,11 @@ public class CollectionLogManager {
     private final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
 
     private int tickCollectionLogScriptFired = -1;
+
     private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
 
     @Inject
     private SyncButtonManager syncButtonManager;
-
-    @Getter
-    protected final HashSet<String> obtainedItemNames = new HashSet<>();
 
     @Inject
     private OkHttpClient okHttpClient;
@@ -103,9 +100,6 @@ public class CollectionLogManager {
 
     @Inject
     private Gson gson;
-
-    @Inject
-    private TempleOSRSConfig config;
 
     @Inject
     private ItemManager itemManager;
@@ -122,22 +116,27 @@ public class CollectionLogManager {
     private EventBus eventBus;
 
     @Inject
-    private CollectionLogChatMessageSubscriber collectionLogChatMessageSubscriber;
+    private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
-    private CollectionLogItemContainerChangedSubscriber collectionLogItemContainerChangedSubscriber;
+    private TempleOSRSPlugin templeOSRSPlugin;
+
+    @Inject
+    private ConfigManager configManager;
 
     public void startUp() {
         eventBus.register(this);
 
-        collectionLogChatMessageSubscriber.startUp();
-        collectionLogItemContainerChangedSubscriber.startUp();
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.startUp();
+        }
 
         clientThread.invoke(() -> {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {
                 return false;
             }
             collectionLogItemIdsFromCache.addAll(parseCacheForClog());
+
             populateCollectionLogItemIdToBitsetIndex();
             final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
             for (int id : varbitIds) {
@@ -152,12 +151,29 @@ public class CollectionLogManager {
     public void shutDown() {
         eventBus.unregister(this);
 
-        collectionLogChatMessageSubscriber.shutDown();
-        collectionLogItemContainerChangedSubscriber.shutDown();
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.shutDown();
+        }
 
         clogItemsBitSet.clear();
         clogItemsCountSet.clear();
         syncButtonManager.shutDown();
+    }
+
+    @Subscribe
+    private void onConfigChanged(ConfigChanged configChanged)
+    {
+        if (!configChanged.getGroup().equals(TempleOSRSConfig.TEMPLEOSRS_CONFIG_GROUP)) {
+            return;
+        }
+
+        if (configChanged.getKey().equals("autoSyncClog")) {
+            if (configChanged.getNewValue() != null) {
+                collectionLogAutoSyncManager.startUp();
+            } else {
+                collectionLogAutoSyncManager.shutDown();
+            }
+        }
     }
 
     @Subscribe

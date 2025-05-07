@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.autosync;
 
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
@@ -11,12 +11,12 @@ import java.util.regex.Pattern;
 
 import static net.runelite.client.util.Text.removeTags;
 
-public class CollectionLogChatMessageSubscriber
+public class CollectionLogAutoSyncChatMessageSubscriber
 {
     private final Pattern NEW_COLLECTION_LOG_ITEM_PATTERN = Pattern.compile("New item added to your collection log: (.*)");
 
     @Inject
-    private CollectionLogManager collectionLogManager;
+    private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
     private EventBus eventBus;
@@ -43,7 +43,7 @@ public class CollectionLogChatMessageSubscriber
         if (matcher.matches()) {
             String itemName = removeTags(matcher.group(1));
 
-            collectionLogManager.obtainedItemNames.add(itemName);
+            collectionLogAutoSyncManager.obtainedItemNames.add(itemName);
         }
     }
 }

@@ -10,6 +10,8 @@ import net.runelite.client.config.ConfigSection;
 @ConfigGroup("TempleOSRS")
 public interface TempleOSRSConfig extends Config
 {
+	String TEMPLEOSRS_CONFIG_GROUP = "TempleOSRS";
+
 	@ConfigSection(
 		name = "General",
 		description = "General Options",

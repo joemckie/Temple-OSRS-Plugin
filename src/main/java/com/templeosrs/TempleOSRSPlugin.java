@@ -33,6 +33,7 @@ import com.templeosrs.ui.ranks.TempleRanks;
 import com.templeosrs.util.TempleService;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.SyncButtonManager;
+import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
@@ -98,6 +99,7 @@ public class TempleOSRSPlugin extends Plugin {
     @Inject
     private ClientToolbar clientToolbar;
 
+    @Getter
     @Inject
     private TempleOSRSConfig config;
 
