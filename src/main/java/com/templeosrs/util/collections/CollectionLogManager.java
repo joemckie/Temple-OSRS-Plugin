@@ -41,6 +41,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -50,7 +51,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -91,9 +91,6 @@ public class CollectionLogManager {
     private SyncButtonManager syncButtonManager;
 
     @Inject
-    private OkHttpClient okHttpClient;
-
-    @Inject
     private ScheduledExecutorService scheduledExecutorService;
 
     @Inject
@@ -121,6 +118,9 @@ public class CollectionLogManager {
 
     @Inject
     private ConfigManager configManager;
+
+    @Inject
+    private CollectionLogRequestManager requestManager;
 
     public void startUp() {
         eventBus.register(this);
@@ -212,12 +212,10 @@ public class CollectionLogManager {
         if (collectionLogItemIdToBitsetIndex.isEmpty()) {
             return -1;
         }
+
         Integer result = collectionLogItemIdToBitsetIndex.get(itemId);
-        if (result == null) {
-//			log.debug("Item id {} not found in the mapping of items", itemId);
-            return -1;
-        }
-        return result;
+
+        return Objects.requireNonNullElse(result, -1);
     }
 
     /**
@@ -283,7 +281,6 @@ public class CollectionLogManager {
             return;
         }
 
-
         submitPlayerData(profileKey, newPlayerData, oldPlayerData);
     }
 
@@ -328,22 +325,14 @@ public class CollectionLogManager {
                 delta
         );
 
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
-                .url(SUBMIT_URL)
-                .post(RequestBody.create(JSON, gson.toJson(submission)))
-                .build();
-
-        Call call = okHttpClient.newCall(request);
-        call.timeout().timeout(3, TimeUnit.SECONDS);
-        call.enqueue(new Callback() {
+        requestManager.uploadEntireCollectionLog(submission, new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
 //				log.debug("Failed to submit: ", e);
             }
 
             @Override
-            public void onResponse(Call call, Response response) {
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
                 try {
                     if (!response.isSuccessful()) {
 //						log.debug("Failed to submit: {}", response.code());
@@ -359,11 +348,7 @@ public class CollectionLogManager {
     }
 
     private void checkManifest() {
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
-                .url(MANIFEST_URL)
-                .build();
-        okHttpClient.newCall(request).enqueue(new Callback() {
+        requestManager.getCollectionLogManifest(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
 //				log.debug("Failed to get manifest: ", e);

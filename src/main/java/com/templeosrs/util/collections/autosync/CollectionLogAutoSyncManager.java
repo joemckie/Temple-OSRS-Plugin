@@ -1,7 +1,7 @@
 package com.templeosrs.util.collections.autosync;
 
 import com.google.gson.Gson;
-import com.templeosrs.TempleOSRSConfig;
+import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.PlayerProfile;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -19,9 +19,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
-import static net.runelite.http.api.RuneLiteAPI.JSON;
 
 @Slf4j
 public class CollectionLogAutoSyncManager {
@@ -46,6 +43,9 @@ public class CollectionLogAutoSyncManager {
     
     @Inject
     private EventBus eventBus;
+
+    @Inject
+    private CollectionLogRequestManager requestManager;
 
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
@@ -93,8 +93,6 @@ public class CollectionLogAutoSyncManager {
     
     synchronized private void uploadObtainedCollectionLogItems()
     {
-        String syncUrl = "http://127.0.0.1:3000/api/sync";
-        
         String username = client.getLocalPlayer().getName();
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
@@ -106,32 +104,23 @@ public class CollectionLogAutoSyncManager {
                 pendingSyncItems
         );
         
-        Request request = new Request.Builder()
-            .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
-            .url(syncUrl)
-            .post(RequestBody.create(JSON, gson.toJson(submission)))
-            .build();
-        
-        Call call = okHttpClient.newCall(request);
-        
-        call.timeout().timeout(3, TimeUnit.SECONDS);
-        
-        call.enqueue(new Callback() {
+        requestManager.uploadNewCollectionLogItems(submission, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-				log.debug("Failed to submit: ", e);
+                log.debug("Failed to submit: ", e);
             }
-            
+
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
                 try {
                     if (!response.isSuccessful()) {
-						log.debug("Failed to submit: {}", response.code());
+                        log.debug("Failed to submit: {}", response.code());
                     }
                 } finally {
                     response.close();
                 }
             }
         });
+
     }
 }

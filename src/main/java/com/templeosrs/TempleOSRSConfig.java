@@ -11,8 +11,6 @@ import net.runelite.client.config.ConfigSection;
 public interface TempleOSRSConfig extends Config
 {
 	String TEMPLE_OSRS_CONFIG_GROUP = "TempleOSRS";
-	
-	String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
 	@ConfigSection(
 		name = "General",
