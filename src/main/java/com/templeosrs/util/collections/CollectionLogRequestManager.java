@@ -7,23 +7,36 @@ import okhttp3.HttpUrl;
 import org.jetbrains.annotations.NotNull;
 
 public class CollectionLogRequestManager extends RequestManager {
-    public void uploadNewCollectionLogItems(@NotNull PlayerDataSync data, Callback callback)
+    public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data, Callback callback)
     {
-        final HttpUrl url = baseUrl.addPathSegment("api/sync_new_collections.php").build();
+        final HttpUrl url = new HttpUrl.Builder()
+                .scheme("http")
+                .host("127.0.0.1")
+                .port(3000)
+                .addPathSegments("api/sync")
+                .build();
 
         post(url, data, callback);
     }
 
-    public void uploadEntireCollectionLog(@NotNull PlayerDataSubmission data, Callback callback)
+    public void uploadFullCollectionLog(@NotNull PlayerDataSubmission data, Callback callback)
     {
-        final HttpUrl url = baseUrl.addPathSegment("api/sync_new_collections.php").build();
+        final HttpUrl url = new HttpUrl.Builder()
+                .scheme(scheme)
+                .host(host)
+                .addPathSegments("api/collection-log/sync_collection.php")
+                .build();
 
         post(url, data, callback);
     }
 
     public void getCollectionLogManifest(Callback callback)
     {
-        final HttpUrl url = baseUrl.addPathSegment("collection-log/manifest.json").build();
+        final HttpUrl url = new HttpUrl.Builder()
+                .scheme(scheme)
+                .host(host)
+                .addPathSegments("collection-log/manifest.json")
+                .build();
 
         get(url, callback);
     }

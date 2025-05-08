@@ -17,11 +17,9 @@ public class RequestManager {
     @Inject
     OkHttpClient okHttpClient;
 
-    private final String scheme = "https";
+    protected final String scheme = "https";
 
-    private final String host = "templeosrs.com";
-
-    protected final HttpUrl.Builder baseUrl = new HttpUrl.Builder().scheme(scheme).host(host);
+    protected final String host = "templeosrs.com";
 
     private Request.Builder buildRequest(@NotNull HttpUrl url)
     {
@@ -51,7 +49,7 @@ public class RequestManager {
         doRequest(request, callback);
     }
 
-    protected void post(@NotNull HttpUrl url, Object data, Callback callback)
+    protected void post(@NotNull HttpUrl url, @NotNull Object data, Callback callback)
     {
         final Request request = buildRequest(url)
             .post(RequestBody.create(JSON, gson.toJson(data)))

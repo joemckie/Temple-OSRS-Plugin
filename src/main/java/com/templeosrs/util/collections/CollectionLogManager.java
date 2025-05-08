@@ -325,7 +325,7 @@ public class CollectionLogManager {
                 delta
         );
 
-        requestManager.uploadEntireCollectionLog(submission, new Callback() {
+        requestManager.uploadFullCollectionLog(submission, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
 //				log.debug("Failed to submit: ", e);

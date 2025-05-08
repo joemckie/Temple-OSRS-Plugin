@@ -104,7 +104,7 @@ public class CollectionLogAutoSyncManager {
                 pendingSyncItems
         );
         
-        requestManager.uploadNewCollectionLogItems(submission, new Callback() {
+        requestManager.uploadObtainedCollectionLogItems(submission, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
                 log.debug("Failed to submit: ", e);
