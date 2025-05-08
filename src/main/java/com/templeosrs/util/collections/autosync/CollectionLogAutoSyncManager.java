@@ -1,19 +1,58 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.google.gson.Gson;
+import com.templeosrs.TempleOSRSConfig;
+import com.templeosrs.util.collections.PlayerProfile;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.gameval.ItemID;
+import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
+import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.util.HashSet;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+import static net.runelite.http.api.RuneLiteAPI.JSON;
+
+@Slf4j
 public class CollectionLogAutoSyncManager {
+    
     @Inject
     private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
 
     @Inject
     private CollectionLogAutoSyncItemContainerChangedSubscriber collectionLogAutoSyncItemContainerChangedSubscriber;
+    
+    @Inject
+    private OkHttpClient okHttpClient;
+    
+    @Inject
+    private Gson gson;
+    
+    @Inject
+    private Client client;
+    
+    @Inject
+    private ScheduledExecutorService scheduledExecutorService;
+    
+    @Inject
+    private EventBus eventBus;
 
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
+    
+    @Getter
+    @Nullable
+    private Integer gameTickToSync;
 
     /**
      * Keeps track of what item IDs are pending a server sync
@@ -23,13 +62,76 @@ public class CollectionLogAutoSyncManager {
 
     public void startUp()
     {
+        pendingSyncItems.add(ItemID.TWISTED_BOW);
+        startSyncCountdown();
+        
+        eventBus.register(this);
         collectionLogAutoSyncChatMessageSubscriber.startUp();
         collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
     }
 
     public void shutDown()
     {
+        eventBus.unregister(this);
         collectionLogAutoSyncChatMessageSubscriber.shutDown();
         collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
+    }
+    
+    public void startSyncCountdown()
+    {
+        gameTickToSync = client.getTickCount() + 17; // Roughly equates to a 10-second wait
+    }
+    
+    @Subscribe
+    public void onGameTick(GameTick gameTick)
+    {
+        if (gameTickToSync != null && client.getTickCount() >= gameTickToSync && !pendingSyncItems.isEmpty()) {
+            gameTickToSync = null;
+            scheduledExecutorService.execute(this::uploadObtainedCollectionLogItems);
+        }
+    }
+    
+    synchronized private void uploadObtainedCollectionLogItems()
+    {
+        String syncUrl = "http://127.0.0.1:3000/api/sync";
+        
+        String username = client.getLocalPlayer().getName();
+        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
+        PlayerProfile profileKey = new PlayerProfile(username, profileType);
+        
+        PlayerDataSync submission = new PlayerDataSync(
+                profileKey.getUsername(),
+                profileKey.getProfileType().name(),
+                client.getAccountHash(),
+                pendingSyncItems
+        );
+        
+        Request request = new Request.Builder()
+            .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
+            .url(syncUrl)
+            .post(RequestBody.create(JSON, gson.toJson(submission)))
+            .build();
+        
+        Call call = okHttpClient.newCall(request);
+        
+        call.timeout().timeout(3, TimeUnit.SECONDS);
+        
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
+				log.debug("Failed to submit: ", e);
+            }
+            
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
+                try {
+                    if (!response.isSuccessful()) {
+						log.debug("Failed to submit: {}", response.code());
+                    }
+                } finally {
+                    response.close();
+                }
+            }
+        });
     }
 }

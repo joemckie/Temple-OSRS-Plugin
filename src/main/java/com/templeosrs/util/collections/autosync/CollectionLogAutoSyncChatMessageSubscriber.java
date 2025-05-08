@@ -1,5 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.EventBus;
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
 
 import static net.runelite.client.util.Text.removeTags;
 
+@Slf4j
 public class CollectionLogAutoSyncChatMessageSubscriber
 {
     private final Pattern NEW_COLLECTION_LOG_ITEM_PATTERN = Pattern.compile("New item added to your collection log: (.*)");
@@ -32,7 +34,7 @@ public class CollectionLogAutoSyncChatMessageSubscriber
     }
 
     @Subscribe
-    public void onChatMessage(ChatMessage chatMessage)
+    private void onChatMessage(ChatMessage chatMessage)
     {
         if (chatMessage.getType() != ChatMessageType.GAMEMESSAGE) {
             return;

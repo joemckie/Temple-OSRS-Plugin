@@ -57,8 +57,6 @@ import java.util.stream.Collectors;
 @Singleton
 public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
-    private final String CONFIG_GROUP = "TempleOSRS";
-    private static final String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
     private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
@@ -163,16 +161,14 @@ public class CollectionLogManager {
     @Subscribe
     private void onConfigChanged(ConfigChanged configChanged)
     {
-        if (!configChanged.getGroup().equals(TempleOSRSConfig.TEMPLEOSRS_CONFIG_GROUP)) {
+        if (!configChanged.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP)) {
             return;
         }
 
-        if (configChanged.getKey().equals("autoSyncClog")) {
-            if (configChanged.getNewValue() != null) {
-                collectionLogAutoSyncManager.startUp();
-            } else {
-                collectionLogAutoSyncManager.shutDown();
-            }
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.startUp();
+        } else {
+            collectionLogAutoSyncManager.shutDown();
         }
     }
 
@@ -333,7 +329,7 @@ public class CollectionLogManager {
         );
 
         Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
+                .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
                 .url(SUBMIT_URL)
                 .post(RequestBody.create(JSON, gson.toJson(submission)))
                 .build();
@@ -364,7 +360,7 @@ public class CollectionLogManager {
 
     private void checkManifest() {
         Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
+                .addHeader("User-Agent", TempleOSRSConfig.PLUGIN_USER_AGENT)
                 .url(MANIFEST_URL)
                 .build();
         okHttpClient.newCall(request).enqueue(new Callback() {

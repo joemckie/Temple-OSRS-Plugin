@@ -8,37 +8,42 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.ItemContainer;
 import net.runelite.client.config.RuneLiteConfig;
+import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.util.concurrent.ScheduledExecutorService;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
 public class MockedTest {
     @Bind
-    protected Client client = mock(Client.class);
+    protected final Client client = mock(Client.class);
 
     @Bind
-    protected RuneLiteConfig runeLiteConfig = mock(RuneLiteConfig.class);
+    protected final RuneLiteConfig runeLiteConfig = mock(RuneLiteConfig.class);
 
     @Bind
-    protected ItemManager itemManager = mock(ItemManager.class);
+    protected final ItemManager itemManager = mock(ItemManager.class);
 
     @Bind
-    protected ItemContainer itemContainer = mock(ItemContainer.class);
+    protected final ItemContainer itemContainer = mock(ItemContainer.class);
 
     @Bind
-    protected ItemComposition itemComposition = mock(ItemComposition.class);
+    protected final ItemComposition itemComposition = mock(ItemComposition.class);
 
     @Bind
-    protected Item item = mock(Item.class);
+    protected final Item item = mock(Item.class);
 
     @Bind
-    protected TempleOSRSConfig templeOSRSConfig = mock(TempleOSRSConfig.class);
+    protected final TempleOSRSConfig templeOSRSConfig = mock(TempleOSRSConfig.class);
 
     @Bind
-    protected ScheduledExecutorService scheduledExecutorService = mock(ScheduledExecutorService.class);
+    protected final ScheduledExecutorService scheduledExecutorService = mock(ScheduledExecutorService.class);
+    
+    @Bind
+    protected final EventBus eventBus = spy(EventBus.class);
 
     @BeforeEach
     protected void beforeEach()

@@ -162,7 +162,7 @@ public class TempleOSRSPlugin extends Plugin {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
-        if (event.getGroup().equals("TempleOSRS")) {
+        if (event.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP)) {
             if (client != null) {
                 menuManager.get().removePlayerMenuItem(TEMPLE);
                 if (config.playerLookup()) {

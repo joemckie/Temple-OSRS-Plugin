@@ -12,6 +12,7 @@ import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,21 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
     {
         triggerChatMessageEvent("Twisted bow");
     }
+    
+    @BeforeEach
+    void registerWithEventBus()
+    {
+        collectionLogAutoSyncChatMessageSubscriber.startUp();
+        collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
+    }
 
+    @AfterEach
+    void unregisterWithEventBus()
+    {
+        collectionLogAutoSyncChatMessageSubscriber.shutDown();
+        collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
+    }
+    
     @Test
     @DisplayName("Ensure the bitset is not modified when the changed container is not the inventory")
     void doesNotAddToPendingItemsForNonInventoryContainers()
@@ -48,7 +63,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
                 new Item[]{}
         );
 
-        collectionLogAutoSyncItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
+        eventBus.post(itemContainerChanged);
 
         assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getPendingSyncItems());
     }
@@ -66,7 +81,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
                 mockItems
         );
 
-        collectionLogAutoSyncItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
+        eventBus.post(itemContainerChanged);
 
         assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getPendingSyncItems());
     }
@@ -86,12 +101,33 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
 
         when(itemComposition.getName()).thenReturn("Twisted bow");
 
-        collectionLogAutoSyncItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
+        eventBus.post(itemContainerChanged);
 
         HashSet<Integer> expectedHashSet = new HashSet<>();
         expectedHashSet.add(ItemID.TWISTED_BOW);
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
+    }
+
+    @Test
+    @DisplayName("Ensure the sync countdown is started when inventory items are found in the obtained items list")
+    void startsSyncCountdownWhenInventoryItemsMatchObtainedItems()
+    {
+        final Item[] mockItems = {
+                new Item(ItemID.TWISTED_BOW, 1)
+        };
+        
+        ItemContainerChanged itemContainerChanged = buildItemContainerChangedEvent(
+                InventoryID.INV,
+                mockItems
+        );
+        
+        when(itemComposition.getName()).thenReturn("Twisted bow");
+        when(client.getTickCount()).thenReturn(100);
+        
+        eventBus.post(itemContainerChanged);
+        
+        assertEquals(117, collectionLogAutoSyncManager.getGameTickToSync());
     }
 
     @Test
@@ -114,7 +150,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
 
         expectedHashSet.add(ItemID.GRACEFUL_BOOTS);
 
-        collectionLogAutoSyncItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged);
+        eventBus.post(itemContainerChanged);
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
 
@@ -133,7 +169,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
 
         expectedHashSet.add(ItemID.GRACEFUL_BOOTS_WYRM);
 
-        collectionLogAutoSyncItemContainerChangedSubscriber.onItemContainerChanged(itemContainerChanged2);
+        eventBus.post(itemContainerChanged2);
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }
@@ -149,7 +185,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
                 0
         );
 
-        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
+        eventBus.post(chatMessage);
     }
 
     private ItemContainerChanged buildItemContainerChangedEvent(int inventoryID, Item[] items)

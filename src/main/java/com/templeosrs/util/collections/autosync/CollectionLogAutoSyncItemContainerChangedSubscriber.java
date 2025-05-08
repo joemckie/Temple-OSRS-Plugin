@@ -28,18 +28,18 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
     private final Multiset<Integer> inventoryItems = HashMultiset.create();
 
-    void startUp()
+    public void startUp()
     {
         eventBus.register(this);
     }
 
-    void shutDown()
+    public void shutDown()
     {
         eventBus.unregister(this);
     }
 
     @Subscribe
-    public void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
+    private void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
     {
         if (itemContainerChanged.getContainerId() != InventoryID.INV) {
             return;
@@ -67,5 +67,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
         inventoryItems.clear();
         inventoryItems.addAll(currentInventoryItems);
+        
+        collectionLogAutoSyncManager.startSyncCountdown();
     }
 }

@@ -6,6 +6,8 @@ import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncChatMessage
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +26,20 @@ public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
 
     final String newCollectionLogItem = "Twisted bow";
     final String newCollectionLogItemMessage = String.format("New item added to your collection log: %s", newCollectionLogItem);
+    
+    @BeforeEach
+    void registerWithEventBus()
+    {
+        collectionLogAutoSyncManager.startUp();
+        collectionLogAutoSyncChatMessageSubscriber.startUp();
+    }
+    
+    @AfterEach
+    void unregisterWithEventBus()
+    {
+        collectionLogAutoSyncManager.shutDown();
+        collectionLogAutoSyncChatMessageSubscriber.shutDown();
+    }
 
     @Test
     @DisplayName("Ensure obtained items are not modified for messages that are not ChatMessageType.GAMEMESSAGE")
@@ -31,7 +47,7 @@ public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.CLAN_MESSAGE, newCollectionLogItemMessage);
 
-        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
+        eventBus.post(chatMessage);
 
         assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getObtainedItemNames());
     }
@@ -42,7 +58,7 @@ public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.GAMEMESSAGE, "Some message");
 
-        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
+        eventBus.post(chatMessage);
 
         assertEquals(new HashSet<>(), collectionLogAutoSyncManager.getObtainedItemNames());
     }
@@ -53,7 +69,7 @@ public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
     {
         ChatMessage chatMessage = buildChatMessage(ChatMessageType.GAMEMESSAGE, newCollectionLogItemMessage);
 
-        collectionLogAutoSyncChatMessageSubscriber.onChatMessage(chatMessage);
+        eventBus.post(chatMessage);
 
         HashSet<String> expectedObtainedItems = new HashSet<>();
 
