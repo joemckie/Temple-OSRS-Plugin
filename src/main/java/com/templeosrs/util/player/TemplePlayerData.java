@@ -1,7 +1,6 @@
 package com.templeosrs.util.player;
 
 import com.google.gson.annotations.SerializedName;
-
 import java.util.Map;
 
 public class TemplePlayerData

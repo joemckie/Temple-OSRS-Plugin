@@ -1,7 +1,6 @@
 package com.templeosrs.util.clan;
 
 import com.google.gson.Gson;
-
 import java.util.Objects;
 
 public class TempleClan
