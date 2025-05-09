@@ -3,10 +3,7 @@ package com.templeosrs;
 import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
-import net.runelite.api.Client;
-import net.runelite.api.Item;
-import net.runelite.api.ItemComposition;
-import net.runelite.api.ItemContainer;
+import net.runelite.api.*;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
@@ -44,6 +41,9 @@ public class MockedTest {
     
     @Bind
     protected final EventBus eventBus = spy(EventBus.class);
+
+    @Bind
+    protected final NPC npc = mock(NPC.class);
 
     @BeforeEach
     protected void beforeEach()

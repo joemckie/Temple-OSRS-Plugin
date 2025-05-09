@@ -62,12 +62,11 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
+                collectionLogAutoSyncManager.startSyncCountdown();
             }
         }
 
         inventoryItems.clear();
         inventoryItems.addAll(currentInventoryItems);
-        
-        collectionLogAutoSyncManager.startSyncCountdown();
     }
 }

@@ -50,9 +50,9 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
+                collectionLogAutoSyncManager.startSyncCountdown();
             }
         });
 
-        collectionLogAutoSyncManager.startSyncCountdown();
     }
 }
