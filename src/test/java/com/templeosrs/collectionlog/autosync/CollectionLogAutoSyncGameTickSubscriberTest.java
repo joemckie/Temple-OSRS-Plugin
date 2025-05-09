@@ -2,7 +2,6 @@ package com.templeosrs.collectionlog.autosync;
 
 import com.google.inject.testing.fieldbinder.Bind;
 import com.templeosrs.MockedTest;
-import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncGameTickSubscriber;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import net.runelite.api.events.GameTick;
@@ -19,21 +18,18 @@ public class CollectionLogAutoSyncGameTickSubscriberTest extends MockedTest
     protected final CollectionLogAutoSyncManager collectionLogAutoSyncManager = spy(CollectionLogAutoSyncManager.class);
 
     @Bind
-    protected final CollectionLogAutoSyncGameTickSubscriber gameTickSubscriber = spy(CollectionLogAutoSyncGameTickSubscriber.class);
-
-    @Bind
-    protected final CollectionLogRequestManager collectionLogRequestManager = spy(CollectionLogRequestManager.class);
+    protected final CollectionLogAutoSyncGameTickSubscriber collectionLogGameTickSubscriber = spy(CollectionLogAutoSyncGameTickSubscriber.class);
     
     @BeforeEach
     void registerWithEventBus()
     {
-        gameTickSubscriber.startUp();
+        collectionLogGameTickSubscriber.startUp();
     }
     
     @AfterEach
     void unregisterWithEventBus()
     {
-        gameTickSubscriber.shutDown();
+        collectionLogGameTickSubscriber.shutDown();
     }
 
     @Test

@@ -30,14 +30,12 @@ public class CollectionLogAutoSyncChatMessageSubscriberTest extends MockedTest
     @BeforeEach
     void registerWithEventBus()
     {
-        collectionLogAutoSyncManager.startUp();
         collectionLogAutoSyncChatMessageSubscriber.startUp();
     }
     
     @AfterEach
     void unregisterWithEventBus()
     {
-        collectionLogAutoSyncManager.shutDown();
         collectionLogAutoSyncChatMessageSubscriber.shutDown();
     }
 
