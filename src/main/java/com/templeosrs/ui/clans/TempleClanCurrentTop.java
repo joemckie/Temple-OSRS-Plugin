@@ -1,12 +1,11 @@
 package com.templeosrs.ui.clans;
 
+import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.materialtabs.MaterialTab;
 import net.runelite.client.ui.components.materialtabs.MaterialTabGroup;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
 
 public class TempleClanCurrentTop extends PluginPanel
 {
