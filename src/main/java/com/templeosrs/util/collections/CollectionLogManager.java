@@ -207,7 +207,7 @@ public class CollectionLogManager {
      * @param itemId: The itemId to look up
      * @return The index of the bit that represents the given itemId, if it is in the map. -1 otherwise.
      */
-    protected int lookupCollectionLogItemIndex(int itemId) {
+    private int lookupCollectionLogItemIndex(int itemId) {
         // The map has not loaded yet, or failed to load.
         if (collectionLogItemIdToBitsetIndex.isEmpty()) {
             return -1;
@@ -295,7 +295,7 @@ public class CollectionLogManager {
 
         out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
         out.collectionLogCounts = clogItemsCountSet;
-        out.collectionLogItemCount = clogItemsBitSet.cardinality();
+        out.collectionLogItemCount = collectionLogItemIdsFromCache.size();
 
         return out;
     }
