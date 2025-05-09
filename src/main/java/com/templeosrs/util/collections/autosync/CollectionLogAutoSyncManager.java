@@ -6,10 +6,8 @@ import com.templeosrs.util.collections.PlayerProfile;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.events.GameTick;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
-import net.runelite.client.eventbus.Subscribe;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,7 +15,6 @@ import org.jetbrains.annotations.Nullable;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class CollectionLogAutoSyncManager {
@@ -30,6 +27,9 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogAutoSyncNpcLootReceivedSubscriber collectionLogAutoSyncNpcLootReceivedSubscriber;
+
+    @Inject
+    private CollectionLogAutoSyncGameTickSubscriber collectionLogAutoSyncGameTickSubscriber;
     
     @Inject
     private OkHttpClient okHttpClient;
@@ -39,9 +39,6 @@ public class CollectionLogAutoSyncManager {
     
     @Inject
     private Client client;
-    
-    @Inject
-    private ScheduledExecutorService scheduledExecutorService;
     
     @Inject
     private EventBus eventBus;
@@ -64,20 +61,18 @@ public class CollectionLogAutoSyncManager {
 
     public void startUp()
     {
-        obtainedItemNames.add("Bones");
-
-        eventBus.register(this);
         collectionLogAutoSyncChatMessageSubscriber.startUp();
         collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
         collectionLogAutoSyncNpcLootReceivedSubscriber.startUp();
+        collectionLogAutoSyncGameTickSubscriber.startUp();
     }
 
     public void shutDown()
     {
-        eventBus.unregister(this);
         collectionLogAutoSyncChatMessageSubscriber.shutDown();
         collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
         collectionLogAutoSyncNpcLootReceivedSubscriber.shutDown();
+        collectionLogAutoSyncGameTickSubscriber.shutDown();
     }
     
     /**
@@ -87,35 +82,25 @@ public class CollectionLogAutoSyncManager {
      */
     public void startSyncCountdown()
     {
-        gameTickToSync = client.getTickCount() + 17;
-    }
-    
-    /**
-     * Listens for game ticks and checks if the sync countdown has completed.
-     * Once the countdown is complete, and there are items pending a sync
-     * it will upload any newly obtained items to the server.
-     */
-    @Subscribe
-    public void onGameTick(GameTick gameTick)
-    {
-        // Note: There shouldn't be an instance of gameTickToSync
-        // being non-null without items in the pendingSyncItems set.
-        if (gameTickToSync == null || pendingSyncItems.isEmpty()) {
-            return;
-        }
+        final int syncDelayInTicks = 17;
 
-        // Sync new collection log items when the game has reached correct tick.
-        if (client.getTickCount() >= gameTickToSync) {
-            gameTickToSync = null;
-            scheduledExecutorService.execute(this::uploadObtainedCollectionLogItems);
-        }
+        gameTickToSync = client.getTickCount() + syncDelayInTicks;
     }
-    
+
+    /**
+     * Resets the sync countdown.
+     * Used after the request has successfully completed.
+     */
+    public void resetSyncCountdown()
+    {
+        gameTickToSync = null;
+    }
+
     /**
      * Uploads the obtained collection log items to the server.
      * This is called when the sync countdown has completed and there are items pending a sync.
      */
-    synchronized private void uploadObtainedCollectionLogItems()
+    synchronized public void uploadObtainedCollectionLogItems()
     {
         String username = client.getLocalPlayer().getName();
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);

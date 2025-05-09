@@ -16,7 +16,7 @@ import static org.mockito.Mockito.spy;
 
 public class MockedTest {
     @Bind
-    protected final Client client = mock(Client.class);
+    protected final Client client = spy(Client.class);
 
     @Bind
     protected final RuneLiteConfig runeLiteConfig = mock(RuneLiteConfig.class);
@@ -37,13 +37,16 @@ public class MockedTest {
     protected final TempleOSRSConfig templeOSRSConfig = mock(TempleOSRSConfig.class);
 
     @Bind
-    protected final ScheduledExecutorService scheduledExecutorService = mock(ScheduledExecutorService.class);
+    protected final ScheduledExecutorService scheduledExecutorService = spy(ScheduledExecutorService.class);
     
     @Bind
     protected final EventBus eventBus = spy(EventBus.class);
 
     @Bind
     protected final NPC npc = mock(NPC.class);
+
+    @Bind
+    protected final Player player = mock(Player.class);
 
     @BeforeEach
     protected void beforeEach()
