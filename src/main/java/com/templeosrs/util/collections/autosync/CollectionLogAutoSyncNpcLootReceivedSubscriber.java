@@ -30,12 +30,20 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
         eventBus.unregister(this);
     }
 
+    /**
+     * This method is called when an NPC loot event is received.
+     * 
+     * If any items in the loot match the newly obtained collection log item names,
+     * they are added to a list of items awaiting a server sync and the sync countdown is started.
+     */
     @Subscribe
     private void onNpcLootReceived(NpcLootReceived npcLootReceived)
     {
         if (collectionLogAutoSyncManager.obtainedItemNames.isEmpty()) {
             return;
         }
+
+        boolean isNewCollectionLogFound = false;
 
         npcLootReceived.getItems().forEach(item -> {
             final int itemId = item.getId();
@@ -44,9 +52,13 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
-                collectionLogAutoSyncManager.startSyncCountdown();
+
+                isNewCollectionLogFound = true;
             }
         });
 
+        if (isNewCollectionLogFound) {
+            collectionLogAutoSyncManager.startSyncCountdown();
+        }
     }
 }

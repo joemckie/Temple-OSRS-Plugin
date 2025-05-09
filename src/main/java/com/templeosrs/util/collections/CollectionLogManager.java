@@ -200,7 +200,6 @@ public class CollectionLogManager {
         }
     }
 
-
     /**
      * Finds the index this itemId is assigned to in the collections mapping.
      *

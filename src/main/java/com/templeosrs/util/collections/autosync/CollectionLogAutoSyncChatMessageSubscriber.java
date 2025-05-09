@@ -33,6 +33,14 @@ public class CollectionLogAutoSyncChatMessageSubscriber
         eventBus.unregister(this);
     }
 
+    /**
+     * This method watches for in-game chat messages that match the new collection log item pattern.
+     
+     * If a matching message is found, it extracts the item name and adds it to the obtainedItemNames set,
+     * which is then used by the ItemContainerChanged and NpcLootReceived events to determine if the item should be synced.
+     * 
+     * @param chatMessage
+     */
     @Subscribe
     private void onChatMessage(ChatMessage chatMessage)
     {

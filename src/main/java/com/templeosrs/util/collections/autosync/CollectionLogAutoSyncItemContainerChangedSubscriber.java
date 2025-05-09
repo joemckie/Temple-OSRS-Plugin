@@ -38,6 +38,12 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
         eventBus.unregister(this);
     }
 
+    /**
+     * This method is called when the item container changes, specifically when the inventory is updated.
+     * 
+     * If any items in the inventory match the newly obtained collection log item names,
+     * they are added to a list of items awaiting a server sync and the sync countdown is started.
+     */
     @Subscribe
     private void onItemContainerChanged(ItemContainerChanged itemContainerChanged)
     {
@@ -54,6 +60,8 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
         final Multiset<Integer> inventoryDifference = Multisets.difference(currentInventoryItems, inventoryItems);
 
+        boolean isNewCollectionLogFound = false;
+
         for (Multiset.Entry<Integer> item : inventoryDifference.entrySet())
         {
             String itemName = itemManager.getItemComposition(item.getElement()).getName();
@@ -62,11 +70,18 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
-                collectionLogAutoSyncManager.startSyncCountdown();
+
+                isNewCollectionLogFound = true;
             }
         }
 
+        // Overwrite the cached inventory items with the current inventory items
+        // to provide a comparator for the next inventory change event
         inventoryItems.clear();
         inventoryItems.addAll(currentInventoryItems);
+
+        if (isNewCollectionLogFound) {
+            collectionLogAutoSyncManager.startSyncCountdown();
+        }
     }
 }

@@ -30,11 +30,21 @@ public class RequestManager {
             .url(url);
     }
 
+    /**
+     * Initiates a request with no timeout.
+     * @param request The request to be sent.
+     * @param callback The callback to handle the response.
+     */
     private void doRequest(Request request, Callback callback)
     {
         okHttpClient.newCall(request).enqueue(callback);
     }
 
+    /**
+     * Initiates a request with the given timeout.
+     * @param request The request to be sent.
+     * @param callback The callback to handle the response.
+     */
     private void doRequest(Request request, Callback callback, long timeout)
     {
         Call call = okHttpClient.newCall(request);
@@ -42,6 +52,11 @@ public class RequestManager {
         call.enqueue(callback);
     }
 
+    /**
+     * Initiates a GET request.
+     * @param url The URL to send the request to.
+     * @param callback The callback to handle the response.
+     */
     protected void get(@NotNull HttpUrl url, Callback callback)
     {
         final Request request = buildRequest(url).get().build();
@@ -49,6 +64,12 @@ public class RequestManager {
         doRequest(request, callback);
     }
 
+    /**
+     * Initiates a POST request with the given data.
+     * @param url The URL to send the request to.
+     * @param data The data to be sent in the request body.
+     * @param callback The callback to handle the response.
+     */
     protected void post(@NotNull HttpUrl url, @NotNull Object data, Callback callback)
     {
         final Request request = buildRequest(url)
