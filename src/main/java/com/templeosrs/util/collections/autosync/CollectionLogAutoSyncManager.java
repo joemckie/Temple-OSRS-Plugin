@@ -28,6 +28,9 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogAutoSyncItemContainerChangedSubscriber collectionLogAutoSyncItemContainerChangedSubscriber;
+
+    @Inject
+    private CollectionLogAutoSyncNpcLootReceivedSubscriber collectionLogAutoSyncNpcLootReceivedSubscriber;
     
     @Inject
     private OkHttpClient okHttpClient;
@@ -62,12 +65,12 @@ public class CollectionLogAutoSyncManager {
 
     public void startUp()
     {
-        pendingSyncItems.add(ItemID.TWISTED_BOW);
-        startSyncCountdown();
-        
+        obtainedItemNames.add("Bones");
+
         eventBus.register(this);
         collectionLogAutoSyncChatMessageSubscriber.startUp();
         collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
+        collectionLogAutoSyncNpcLootReceivedSubscriber.startUp();
     }
 
     public void shutDown()
@@ -75,6 +78,7 @@ public class CollectionLogAutoSyncManager {
         eventBus.unregister(this);
         collectionLogAutoSyncChatMessageSubscriber.shutDown();
         collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
+        collectionLogAutoSyncNpcLootReceivedSubscriber.shutDown();
     }
     
     public void startSyncCountdown()
@@ -115,7 +119,11 @@ public class CollectionLogAutoSyncManager {
                 try {
                     if (!response.isSuccessful()) {
                         log.debug("Failed to submit: {}", response.code());
+                        return;
                     }
+
+                    obtainedItemNames.clear();
+                    pendingSyncItems.clear();
                 } finally {
                     response.close();
                 }
