@@ -13,6 +13,7 @@ import net.runelite.client.game.ItemManager;
 
 import javax.inject.Inject;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class CollectionLogAutoSyncItemContainerChangedSubscriber
@@ -40,7 +41,6 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
     /**
      * This method is called when the item container changes, specifically when the inventory is updated.
-     * 
      * If any items in the inventory match the newly obtained collection log item names,
      * they are added to a list of items awaiting a server sync and the sync countdown is started.
      */
@@ -60,10 +60,9 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
         final Multiset<Integer> inventoryDifference = Multisets.difference(currentInventoryItems, inventoryItems);
 
-        boolean isNewCollectionLogFound = false;
+        AtomicBoolean isNewCollectionLogFound = new AtomicBoolean(false);
 
-        for (Multiset.Entry<Integer> item : inventoryDifference.entrySet())
-        {
+        inventoryDifference.entrySet().forEach(item -> {
             String itemName = itemManager.getItemComposition(item.getElement()).getName();
             int itemId = item.getElement();
 
@@ -71,16 +70,16 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 
-                isNewCollectionLogFound = true;
+                isNewCollectionLogFound.set(true);
             }
-        }
+        });
 
         // Overwrite the cached inventory items with the current inventory items
         // to provide a comparator for the next inventory change event
         inventoryItems.clear();
         inventoryItems.addAll(currentInventoryItems);
 
-        if (isNewCollectionLogFound) {
+        if (isNewCollectionLogFound.get()) {
             collectionLogAutoSyncManager.startSyncCountdown();
         }
     }

@@ -9,7 +9,6 @@ import org.jetbrains.annotations.NotNull;
 public class CollectionLogRequestManager extends RequestManager {
     /**
      * Uploads newly obtained collection log items to the server.
-     * 
      * Used by the auto-sync feature to automatically synchronise the collection log.
      * 
      * @param data The data to be uploaded.
@@ -28,7 +27,6 @@ public class CollectionLogRequestManager extends RequestManager {
 
     /**
      * Uploads the full collection log to the server.
-     * 
      * Triggered by the Collection Log Sync button.
      * 
      * @param data The data to be uploaded.
@@ -47,7 +45,6 @@ public class CollectionLogRequestManager extends RequestManager {
 
     /**
      * Retrieves the collection log manifest from the server.
-     * 
      * The manifest contains information that maps the collection log items to their respective IDs/varbits.
      * 
      * @param callback The callback to handle the response.

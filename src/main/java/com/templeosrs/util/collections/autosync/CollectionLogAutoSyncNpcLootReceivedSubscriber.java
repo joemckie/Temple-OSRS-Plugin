@@ -7,6 +7,7 @@ import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
 
 import javax.inject.Inject;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class CollectionLogAutoSyncNpcLootReceivedSubscriber
@@ -32,7 +33,6 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
 
     /**
      * This method is called when an NPC loot event is received.
-     * 
      * If any items in the loot match the newly obtained collection log item names,
      * they are added to a list of items awaiting a server sync and the sync countdown is started.
      */
@@ -43,7 +43,7 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
             return;
         }
 
-        boolean isNewCollectionLogFound = false;
+        AtomicBoolean isNewCollectionLogFound = new AtomicBoolean(false);
 
         npcLootReceived.getItems().forEach(item -> {
             final int itemId = item.getId();
@@ -53,11 +53,11 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
                 collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 
-                isNewCollectionLogFound = true;
+                isNewCollectionLogFound.set(true);
             }
         });
 
-        if (isNewCollectionLogFound) {
+        if (isNewCollectionLogFound.get()) {
             collectionLogAutoSyncManager.startSyncCountdown();
         }
     }

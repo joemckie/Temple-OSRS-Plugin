@@ -55,7 +55,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
     }
     
     @Test
-    @DisplayName("Ensure the bitset is not modified when the changed container is not the inventory")
+    @DisplayName("Ensure the pending items are not modified when the changed container is not the inventory")
     void doesNotAddToPendingItemsForNonInventoryContainers()
     {
         ItemContainerChanged itemContainerChanged = buildItemContainerChangedEvent(
@@ -69,7 +69,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
     }
 
     @Test
-    @DisplayName("Ensure the bitset is not modified when no inventory items are found in the obtained items list")
+    @DisplayName("Ensure the pending items are not modified when no inventory items are found in the obtained items list")
     void doesNotAddToPendingItemsWhenNoInventoryItemsMatchObtainedItems()
     {
         final Item[] mockItems = {
@@ -157,7 +157,9 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         // Trigger another collection log event that has a duplicate name to an existing item in the inventory
         triggerChatMessageEvent("Graceful boots");
 
-        final Item[] mockItems2 = { new Item(ItemID.GRACEFUL_BOOTS_WYRM, 1) };
+        final Item[] mockItems2 = {
+                new Item(ItemID.GRACEFUL_BOOTS_WYRM, 1)
+        };
 
         ItemContainerChanged itemContainerChanged2 = new ItemContainerChanged(InventoryID.INV, itemContainer);
 
