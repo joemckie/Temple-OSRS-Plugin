@@ -5,11 +5,17 @@ import com.templeosrs.util.clan.TempleClan;
 import com.templeosrs.util.comp.TempleCompetition;
 import com.templeosrs.util.player.TemplePlayer;
 import com.templeosrs.util.sync.TempleSync;
-import okhttp3.*;
-
-import javax.inject.Inject;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import javax.inject.Inject;
+import okhttp3.Call;
+import okhttp3.FormBody;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class TempleService
 {

@@ -28,8 +28,9 @@ package com.templeosrs.util;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import net.runelite.client.hiscore.HiscoreSkillType;
-
-import static net.runelite.client.hiscore.HiscoreSkillType.*;
+import static net.runelite.client.hiscore.HiscoreSkillType.ACTIVITY;
+import static net.runelite.client.hiscore.HiscoreSkillType.BOSS;
+import static net.runelite.client.hiscore.HiscoreSkillType.SKILL;
 
 @AllArgsConstructor
 @Getter

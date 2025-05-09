@@ -27,24 +27,31 @@ package com.templeosrs.util;
 import com.google.common.collect.EvictingQueue;
 import com.google.inject.Inject;
 import com.templeosrs.TempleOSRSConfig;
-import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
-import net.runelite.api.clan.ClanID;
-import net.runelite.api.clan.ClanMember;
-import net.runelite.api.clan.ClanSettings;
 
-import javax.inject.Singleton;
-import javax.swing.*;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
-import javax.swing.text.JTextComponent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import javax.inject.Singleton;
+import javax.swing.SwingUtilities;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
+import javax.swing.text.JTextComponent;
+
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
+import net.runelite.api.Friend;
+import net.runelite.api.FriendsChatManager;
+import net.runelite.api.Nameable;
+import net.runelite.api.NameableContainer;
+import net.runelite.api.Player;
+import net.runelite.api.clan.ClanID;
+import net.runelite.api.clan.ClanMember;
+import net.runelite.api.clan.ClanSettings;
+import net.runelite.api.WorldView;
 
 @Slf4j
 @Singleton
