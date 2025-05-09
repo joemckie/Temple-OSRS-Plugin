@@ -2,17 +2,23 @@ package com.templeosrs.ui.competitions;
 
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.comp.TempleCompetitionParticipant;
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
-
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.util.List;
+import java.util.Objects;
+import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
-import java.awt.*;
-import java.util.List;
-import java.util.Objects;
-
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
 
 public class TempleCompetitionRankings extends JPanel
