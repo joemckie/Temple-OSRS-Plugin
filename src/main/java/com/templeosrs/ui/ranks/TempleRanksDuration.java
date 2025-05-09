@@ -2,11 +2,11 @@ package com.templeosrs.ui.ranks;
 
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.util.PlayerRanges;
-
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
+import javax.swing.JComboBox;
+import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
 
 public class TempleRanksDuration extends JPanel

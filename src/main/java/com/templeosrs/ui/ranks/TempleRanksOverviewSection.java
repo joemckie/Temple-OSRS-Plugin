@@ -1,15 +1,17 @@
 package com.templeosrs.ui.ranks;
 
+import static com.templeosrs.ui.TempleOSRSPanel.DEFAULT;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.SwingConstants;
+import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.QuantityFormatter;
-
-import javax.swing.*;
-import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
-import static com.templeosrs.ui.TempleOSRSPanel.DEFAULT;
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
+import net.runelite.client.util.QuantityFormatter;
 
 public class TempleRanksOverviewSection extends JPanel
 {

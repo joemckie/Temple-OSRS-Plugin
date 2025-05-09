@@ -1,13 +1,14 @@
 package com.templeosrs.ui.ranks;
 
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
-
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import javax.swing.BorderFactory;
+import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.EtchedBorder;
 import javax.swing.border.TitledBorder;
-import java.awt.*;
+import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.FontManager;
 
 public class TempleRanksOverview extends JPanel
 {
