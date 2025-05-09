@@ -1,14 +1,14 @@
 package com.templeosrs.ui.ranks;
 
-import net.runelite.client.hiscore.HiscoreSkillType;
-import net.runelite.client.ui.ColorScheme;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Dimension;
+import java.awt.GridLayout;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Comparator;
-
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
+import net.runelite.client.hiscore.HiscoreSkillType;
+import net.runelite.client.ui.ColorScheme;
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
 
 public class TempleActivitySortHeader extends JPanel

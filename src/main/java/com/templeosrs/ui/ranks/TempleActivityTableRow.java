@@ -1,14 +1,17 @@
 package com.templeosrs.ui.ranks;
 
 import com.templeosrs.TempleOSRSPlugin;
-import net.runelite.client.hiscore.HiscoreSkillType;
-import net.runelite.client.util.ImageUtil;
-
-import javax.swing.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import java.awt.*;
-
+import net.runelite.client.hiscore.HiscoreSkillType;
 import static net.runelite.client.ui.PluginPanel.PANEL_WIDTH;
+import net.runelite.client.util.ImageUtil;
 
 public class TempleActivityTableRow extends JPanel
 {
