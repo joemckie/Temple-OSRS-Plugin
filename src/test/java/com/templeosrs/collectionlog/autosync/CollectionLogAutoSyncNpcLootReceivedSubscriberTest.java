@@ -3,6 +3,7 @@ package com.templeosrs.collectionlog.autosync;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemStack;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -94,8 +95,8 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriberTest extends MockedCo
 
         eventBus.post(npcLootReceived);
 
-        final HashSet<Integer> expectedHashSet = new HashSet<>();
-        expectedHashSet.add(ItemID.TWISTED_BOW);
+        final HashSet<Pair<String, Integer>> expectedHashSet = new HashSet<>();
+        expectedHashSet.add(Pair.of("Twisted bow", ItemID.TWISTED_BOW));
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }

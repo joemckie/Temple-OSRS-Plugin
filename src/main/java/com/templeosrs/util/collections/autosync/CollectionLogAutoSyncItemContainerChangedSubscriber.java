@@ -9,6 +9,7 @@ import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.Arrays;
@@ -53,7 +54,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             int itemId = item.getElement();
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
-                collectionLogAutoSyncManager.pendingSyncItems.add(itemId);
+                collectionLogAutoSyncManager.pendingSyncItems.add(Pair.of(itemName, itemId));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 
                 isNewCollectionLogFound.set(true);

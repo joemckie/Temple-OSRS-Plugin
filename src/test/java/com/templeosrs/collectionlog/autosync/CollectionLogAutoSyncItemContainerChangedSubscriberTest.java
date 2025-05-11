@@ -1,14 +1,18 @@
 package com.templeosrs.collectionlog.autosync;
 
+import com.google.gson.Gson;
+import com.google.inject.testing.fieldbinder.Bind;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import javax.inject.Inject;
 import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,8 +76,8 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
 
         eventBus.post(itemContainerChanged);
 
-        HashSet<Integer> expectedHashSet = new HashSet<>();
-        expectedHashSet.add(ItemID.TWISTED_BOW);
+        HashSet<Pair<String, Integer>> expectedHashSet = new HashSet<>();
+        expectedHashSet.add(Pair.of("Twisted bow", ItemID.TWISTED_BOW));
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }
@@ -108,7 +112,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         triggerNewCollectionLogItemChatMessageEvent("Graceful boots");
 
         final Item[] mockItems = { new Item(ItemID.GRACEFUL_BOOTS, 1) };
-        final HashSet<Integer> expectedHashSet = new HashSet<>();
+        final HashSet<Pair<String, Integer>> expectedHashSet = new HashSet<>();
 
         ItemContainerChanged itemContainerChanged = new ItemContainerChanged(InventoryID.INV, itemContainer);
         when(itemContainer.getItems()).thenReturn(mockItems);
@@ -117,7 +121,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         when(gracefulBootsItemComposition.getName()).thenReturn("Graceful boots");
         when(itemManager.getItemComposition(ItemID.GRACEFUL_BOOTS)).thenReturn(gracefulBootsItemComposition);
 
-        expectedHashSet.add(ItemID.GRACEFUL_BOOTS);
+        expectedHashSet.add(Pair.of("Graceful boots", ItemID.GRACEFUL_BOOTS));
 
         eventBus.post(itemContainerChanged);
 
@@ -138,7 +142,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         when(gracefulBootsWyrmItemComposition.getName()).thenReturn("Graceful boots");
         when(itemManager.getItemComposition(ItemID.GRACEFUL_BOOTS_WYRM)).thenReturn(gracefulBootsWyrmItemComposition);
 
-        expectedHashSet.add(ItemID.GRACEFUL_BOOTS_WYRM);
+        expectedHashSet.add(Pair.of("Graceful boots", ItemID.GRACEFUL_BOOTS_WYRM));
 
         eventBus.post(itemContainerChanged2);
 

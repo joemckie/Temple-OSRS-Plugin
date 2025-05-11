@@ -9,6 +9,7 @@ import net.runelite.api.Client;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import okhttp3.*;
+import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -60,7 +61,7 @@ public class CollectionLogAutoSyncManager {
      * Keeps track of what item IDs are pending a server sync
      */
     @Getter
-    protected final HashSet<Integer> pendingSyncItems = new HashSet<>();
+    protected final HashSet<Pair<String, Integer>> pendingSyncItems = new HashSet<>();
 
     public void startUp()
     {

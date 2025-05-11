@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
+import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.HashSet;
@@ -30,7 +31,7 @@ public class CollectionLogAutoSyncGameTickSubscriber
     public void onGameTick(GameTick gameTick)
     {
         final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
-        final HashSet<Integer> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+        final HashSet<Pair<String, Integer>> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
 
         // Note: There shouldn't be an instance of gameTickToSync
         // being non-null without items in the pendingSyncItems set.
