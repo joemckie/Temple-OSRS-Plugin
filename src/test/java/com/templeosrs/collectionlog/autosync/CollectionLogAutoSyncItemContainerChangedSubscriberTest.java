@@ -1,7 +1,5 @@
 package com.templeosrs.collectionlog.autosync;
 
-import com.google.gson.Gson;
-import com.google.inject.testing.fieldbinder.Bind;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.events.ItemContainerChanged;
@@ -12,7 +10,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import javax.inject.Inject;
 import java.util.HashSet;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
