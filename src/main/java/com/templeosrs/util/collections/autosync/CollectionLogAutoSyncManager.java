@@ -30,6 +30,9 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogAutoSyncGameTickSubscriber collectionLogAutoSyncGameTickSubscriber;
+
+    @Inject
+    private CollectionLogAutoSyncConfigChecker collectionLogAutoSyncConfigChecker;
     
     @Inject
     private OkHttpClient okHttpClient;
@@ -65,14 +68,20 @@ public class CollectionLogAutoSyncManager {
         eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
         eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
         eventBus.register(collectionLogAutoSyncGameTickSubscriber);
+        eventBus.register(collectionLogAutoSyncConfigChecker);
+
+        collectionLogAutoSyncConfigChecker.startUp();
     }
 
     public void shutDown()
     {
-        eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
-        eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
-        eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
-        eventBus.register(collectionLogAutoSyncGameTickSubscriber);
+        eventBus.unregister(collectionLogAutoSyncChatMessageSubscriber);
+        eventBus.unregister(collectionLogAutoSyncItemContainerChangedSubscriber);
+        eventBus.unregister(collectionLogAutoSyncNpcLootReceivedSubscriber);
+        eventBus.unregister(collectionLogAutoSyncGameTickSubscriber);
+        eventBus.unregister(collectionLogAutoSyncConfigChecker);
+
+        collectionLogAutoSyncConfigChecker.shutDown();
     }
     
     /**

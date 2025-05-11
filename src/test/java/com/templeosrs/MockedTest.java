@@ -4,9 +4,15 @@ import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
 import net.runelite.api.*;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.chat.ChatMessageManager;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneLiteConfig;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.plugins.xpupdater.XpUpdaterConfig;
+import net.runelite.client.ui.ClientUI;
 import org.junit.jupiter.api.BeforeEach;
 
 import java.util.concurrent.ScheduledExecutorService;
@@ -47,6 +53,24 @@ public class MockedTest {
 
     @Bind
     protected final Player player = mock(Player.class);
+
+    @Bind
+    protected final ConfigManager configManager = mock(ConfigManager.class);
+
+    @Bind
+    protected final PluginManager pluginManager = mock(PluginManager.class);
+
+    @Bind
+    protected final ClientUI clientUI = mock(ClientUI.class);
+
+    @Bind
+    protected final ChatMessageManager chatMessageManager = mock(ChatMessageManager.class);
+
+    @Bind
+    protected final XpUpdaterConfig xpUpdaterConfig = mock(XpUpdaterConfig.class);
+
+    @Bind
+    protected final GameStateChanged gameStateChanged = mock(GameStateChanged.class);
 
     @BeforeEach
     protected void beforeEach()

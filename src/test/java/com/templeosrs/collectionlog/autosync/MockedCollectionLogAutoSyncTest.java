@@ -4,9 +4,13 @@ import com.google.inject.testing.fieldbinder.Bind;
 import com.templeosrs.MockedTest;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.GameState;
 import net.runelite.api.Item;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.ItemContainerChanged;
+import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemStack;
 import org.junit.jupiter.api.AfterEach;
@@ -20,6 +24,12 @@ import static org.mockito.Mockito.when;
 public class MockedCollectionLogAutoSyncTest extends MockedTest {
     @Bind
     protected final CollectionLogAutoSyncManager collectionLogAutoSyncManager = spy(CollectionLogAutoSyncManager.class);
+
+    @BeforeEach
+    void enableAutoSyncOption()
+    {
+        when(templeOSRSConfig.autoSyncClog()).thenReturn(true);
+    }
 
     @BeforeEach
     void registerWithEventBus()
@@ -41,6 +51,37 @@ public class MockedCollectionLogAutoSyncTest extends MockedTest {
         );
 
         eventBus.post(chatMessage);
+    }
+
+    void logIn()
+    {
+        final GameStateChanged gameStateChanged = buildGameStateChangedEvent(GameState.LOGGED_IN);
+
+        eventBus.post(gameStateChanged);
+    }
+
+    void logOut()
+    {
+        final GameStateChanged gameStateChanged = buildGameStateChangedEvent(GameState.LOGIN_SCREEN);
+
+        eventBus.post(gameStateChanged);
+    }
+
+    void hopWorld()
+    {
+        final GameStateChanged gameStateChanged = buildGameStateChangedEvent(GameState.HOPPING);
+
+        eventBus.post(gameStateChanged);
+    }
+
+    void setCollectionLogOptionValue(int value)
+    {
+        final VarbitChanged varbitChanged = new VarbitChanged();
+
+        varbitChanged.setVarbitId(VarbitID.OPTION_COLLECTION_NEW_ITEM);
+        varbitChanged.setValue(value);
+
+        eventBus.post(varbitChanged);
     }
 
     NpcLootReceived buildNpcLootReceivedEvent(ItemStack[] itemStacks)
@@ -66,5 +107,14 @@ public class MockedCollectionLogAutoSyncTest extends MockedTest {
         when(itemContainer.getItems()).thenReturn(items);
 
         return new ItemContainerChanged(inventoryID, itemContainer);
+    }
+
+    GameStateChanged buildGameStateChangedEvent(GameState gameState)
+    {
+        final GameStateChanged gameStateChanged = new GameStateChanged();
+
+        gameStateChanged.setGameState(gameState);
+
+        return gameStateChanged;
     }
 }
