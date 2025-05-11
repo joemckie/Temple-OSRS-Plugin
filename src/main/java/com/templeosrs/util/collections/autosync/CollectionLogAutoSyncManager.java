@@ -120,20 +120,20 @@ public class CollectionLogAutoSyncManager {
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
                 client.getAccountHash(),
-                pendingSyncItems
+                pendingSyncItems.stream().map(item -> new ObtainedItem(item.getKey(), item.getValue())).toArray()
         );
-        
+
         requestManager.uploadObtainedCollectionLogItems(submission, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                // log.debug("Failed to submit: ", e);
+//                 log.debug("Failed to submit: ", e);
             }
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
                 try {
                     if (!response.isSuccessful()) {
-                        // log.debug("Failed to submit: {}", response.code());
+//                         log.debug("Failed to submit: {}", response.code());
                         return;
                     }
 

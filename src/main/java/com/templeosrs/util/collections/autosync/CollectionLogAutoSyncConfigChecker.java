@@ -47,9 +47,11 @@ public class CollectionLogAutoSyncConfigChecker {
 
     void startUp()
     {
-        collectionLogManager.getClientThread().invoke(() -> {
-            checkAndWarnForCollectionLogNotificationSetting(client.getVarbitValue(VarbitID.OPTION_COLLECTION_NEW_ITEM));
-        });
+        if (client.getGameState() == GameState.LOGGED_IN) {
+            collectionLogManager.getClientThread().invoke(() -> {
+                checkAndWarnForCollectionLogNotificationSetting(client.getVarbitValue(VarbitID.OPTION_COLLECTION_NEW_ITEM));
+            });
+        }
     }
 
     void shutDown()
