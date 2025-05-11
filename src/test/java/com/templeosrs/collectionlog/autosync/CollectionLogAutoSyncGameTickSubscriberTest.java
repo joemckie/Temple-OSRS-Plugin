@@ -1,37 +1,13 @@
 package com.templeosrs.collectionlog.autosync;
 
-import com.google.inject.testing.fieldbinder.Bind;
-import com.templeosrs.MockedTest;
-import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncGameTickSubscriber;
-import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import net.runelite.api.events.GameTick;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.mockito.Mockito.*;
 
-public class CollectionLogAutoSyncGameTickSubscriberTest extends MockedTest
+public class CollectionLogAutoSyncGameTickSubscriberTest extends MockedCollectionLogAutoSyncTest
 {
-    @Bind
-    protected final CollectionLogAutoSyncManager collectionLogAutoSyncManager = spy(CollectionLogAutoSyncManager.class);
-
-    @Bind
-    protected final CollectionLogAutoSyncGameTickSubscriber collectionLogGameTickSubscriber = spy(CollectionLogAutoSyncGameTickSubscriber.class);
-    
-    @BeforeEach
-    void registerWithEventBus()
-    {
-        collectionLogGameTickSubscriber.startUp();
-    }
-    
-    @AfterEach
-    void unregisterWithEventBus()
-    {
-        collectionLogGameTickSubscriber.shutDown();
-    }
-
     @Test
     @DisplayName("Ensure no request is made if the game tick to sync has not been set")
     void doesNotRequestIfGameTickToSyncIsUnset()

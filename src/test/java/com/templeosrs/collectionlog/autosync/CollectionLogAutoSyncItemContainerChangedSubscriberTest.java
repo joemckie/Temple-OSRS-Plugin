@@ -1,18 +1,10 @@
 package com.templeosrs.collectionlog.autosync;
 
-import com.google.inject.testing.fieldbinder.Bind;
-import com.templeosrs.MockedTest;
-import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncChatMessageSubscriber;
-import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncItemContainerChangedSubscriber;
-import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
-import net.runelite.api.ChatMessageType;
 import net.runelite.api.Item;
 import net.runelite.api.ItemComposition;
-import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.api.gameval.ItemID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,36 +14,13 @@ import java.util.HashSet;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
-public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends MockedTest
+public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends MockedCollectionLogAutoSyncTest
 {
-    @Bind
-    protected final CollectionLogAutoSyncManager collectionLogAutoSyncManager = spy(CollectionLogAutoSyncManager.class);
-
-    @Bind
-    protected final CollectionLogAutoSyncItemContainerChangedSubscriber collectionLogAutoSyncItemContainerChangedSubscriber = spy(CollectionLogAutoSyncItemContainerChangedSubscriber.class);
-
-    @Bind
-    protected final CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber = spy(CollectionLogAutoSyncChatMessageSubscriber.class);
-
     @BeforeEach
     // In-game, the chat message triggers before the inventory is updated with new items, so emulate this in the tests
     void setupChatMessageEventAndTrigger()
     {
-        triggerChatMessageEvent("Twisted bow");
-    }
-    
-    @BeforeEach
-    void registerWithEventBus()
-    {
-        collectionLogAutoSyncChatMessageSubscriber.startUp();
-        collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
-    }
-
-    @AfterEach
-    void unregisterWithEventBus()
-    {
-        collectionLogAutoSyncChatMessageSubscriber.shutDown();
-        collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
+        triggerNewCollectionLogItemChatMessageEvent("Twisted bow");
     }
     
     @Test
@@ -136,7 +105,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
     {
         collectionLogAutoSyncManager.getObtainedItemNames().clear();
 
-        triggerChatMessageEvent("Graceful boots");
+        triggerNewCollectionLogItemChatMessageEvent("Graceful boots");
 
         final Item[] mockItems = { new Item(ItemID.GRACEFUL_BOOTS, 1) };
         final HashSet<Integer> expectedHashSet = new HashSet<>();
@@ -155,7 +124,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
 
         // Trigger another collection log event that has a duplicate name to an existing item in the inventory
-        triggerChatMessageEvent("Graceful boots");
+        triggerNewCollectionLogItemChatMessageEvent("Graceful boots");
 
         final Item[] mockItems2 = {
                 new Item(ItemID.GRACEFUL_BOOTS_WYRM, 1)
@@ -174,30 +143,5 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         eventBus.post(itemContainerChanged2);
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
-    }
-
-    void triggerChatMessageEvent(String itemName)
-    {
-        final ChatMessage chatMessage = new ChatMessage(
-                null,
-                ChatMessageType.GAMEMESSAGE,
-                "",
-                String.format("New item added to your collection log: %s", itemName),
-                "",
-                0
-        );
-
-        eventBus.post(chatMessage);
-    }
-
-    private ItemContainerChanged buildItemContainerChangedEvent(int inventoryID, Item[] items)
-    {
-        for (Item value : items) {
-            when(itemManager.getItemComposition(value.getId())).thenReturn(itemComposition);
-        }
-
-        when(itemContainer.getItems()).thenReturn(items);
-
-        return new ItemContainerChanged(inventoryID, itemContainer);
     }
 }

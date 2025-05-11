@@ -3,7 +3,6 @@ package com.templeosrs.util.collections.autosync;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
@@ -19,19 +18,6 @@ public class CollectionLogAutoSyncChatMessageSubscriber
 
     @Inject
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
-
-    @Inject
-    private EventBus eventBus;
-
-    public void startUp()
-    {
-        eventBus.register(this);
-    }
-
-    public void shutDown()
-    {
-        eventBus.unregister(this);
-    }
 
     /**
      * This method watches for in-game chat messages that match the new collection log item pattern.

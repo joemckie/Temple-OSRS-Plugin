@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
 
@@ -22,22 +21,9 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
-    private EventBus eventBus;
-
-    @Inject
     private ItemManager itemManager;
 
     private final Multiset<Integer> inventoryItems = HashMultiset.create();
-
-    public void startUp()
-    {
-        eventBus.register(this);
-    }
-
-    public void shutDown()
-    {
-        eventBus.unregister(this);
-    }
 
     /**
      * This method is called when the item container changes, specifically when the inventory is updated.

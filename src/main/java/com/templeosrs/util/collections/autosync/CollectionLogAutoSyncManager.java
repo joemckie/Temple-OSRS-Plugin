@@ -61,18 +61,18 @@ public class CollectionLogAutoSyncManager {
 
     public void startUp()
     {
-        collectionLogAutoSyncChatMessageSubscriber.startUp();
-        collectionLogAutoSyncItemContainerChangedSubscriber.startUp();
-        collectionLogAutoSyncNpcLootReceivedSubscriber.startUp();
-        collectionLogAutoSyncGameTickSubscriber.startUp();
+        eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
+        eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
+        eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
+        eventBus.register(collectionLogAutoSyncGameTickSubscriber);
     }
 
     public void shutDown()
     {
-        collectionLogAutoSyncChatMessageSubscriber.shutDown();
-        collectionLogAutoSyncItemContainerChangedSubscriber.shutDown();
-        collectionLogAutoSyncNpcLootReceivedSubscriber.shutDown();
-        collectionLogAutoSyncGameTickSubscriber.shutDown();
+        eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
+        eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
+        eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
+        eventBus.register(collectionLogAutoSyncGameTickSubscriber);
     }
     
     /**

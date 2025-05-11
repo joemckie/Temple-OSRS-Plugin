@@ -1,7 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
@@ -16,20 +15,7 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
-    private EventBus eventBus;
-
-    @Inject
     private ItemManager itemManager;
-
-    public void startUp()
-    {
-        eventBus.register(this);
-    }
-
-    public void shutDown()
-    {
-        eventBus.unregister(this);
-    }
 
     /**
      * This method is called when an NPC loot event is received.

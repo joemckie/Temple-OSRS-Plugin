@@ -3,7 +3,6 @@ package com.templeosrs.util.collections.autosync;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
-import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
 import javax.inject.Inject;
@@ -17,23 +16,10 @@ public class CollectionLogAutoSyncGameTickSubscriber
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
 
     @Inject
-    private EventBus eventBus;
-
-    @Inject
     private Client client;
 
     @Inject
     private ScheduledExecutorService scheduledExecutorService;
-
-    public void startUp()
-    {
-        eventBus.register(this);
-    }
-
-    public void shutDown()
-    {
-        eventBus.unregister(this);
-    }
 
     /**
      * Listens for game ticks and checks if the sync countdown has completed.
