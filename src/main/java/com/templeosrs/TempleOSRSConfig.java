@@ -10,24 +10,29 @@ import net.runelite.client.config.ConfigSection;
 @ConfigGroup("TempleOSRS")
 public interface TempleOSRSConfig extends Config
 {
+	String TEMPLE_OSRS_CONFIG_GROUP = "TempleOSRS";
+
 	@ConfigSection(
 		name = "General",
 		description = "General Options",
 		position = 0
 	)
 	String generalOptions = "generalOptions";
+
 	@ConfigSection(
 		name = "Ranks",
 		description = "Rank Options",
 		position = 10
 	)
 	String rankOptions = "rankOptions";
+
 	@ConfigSection(
 		name = "Clans",
 		description = "Clan Options",
 		position = 20
 	)
 	String clanOptions = "clanOptions";
+
 	@ConfigSection(
 		name = "Competitions",
 		description = "Competition Options",
@@ -263,5 +268,15 @@ public interface TempleOSRSConfig extends Config
 		return true;
 	}
 
-
+	@ConfigItem(
+			keyName = "autoSyncClog",
+			name = "Automatically sync Collection Log",
+			description = "When enabled, TempleOSRS will automatically sync your collection log when you receive a new item",
+			position = 2,
+			section = clogOptions
+	)
+	default boolean autoSyncClog()
+	{
+		return false;
+	}
 }

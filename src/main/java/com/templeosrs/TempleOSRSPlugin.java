@@ -31,9 +31,17 @@ import com.templeosrs.ui.clans.TempleClans;
 import com.templeosrs.ui.competitions.TempleCompetitions;
 import com.templeosrs.ui.ranks.TempleRanks;
 import com.templeosrs.util.TempleService;
-import com.templeosrs.util.collections.*;
-import net.runelite.api.*;
-import net.runelite.api.events.*;
+import com.templeosrs.util.collections.CollectionLogManager;
+import com.templeosrs.util.collections.SyncButtonManager;
+import lombok.Getter;
+import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.api.MenuAction;
+import net.runelite.api.Player;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.MenuEntryAdded;
+import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.widgets.ComponentID;
 import net.runelite.api.widgets.InterfaceID;
 import net.runelite.api.widgets.WidgetUtil;
@@ -91,6 +99,7 @@ public class TempleOSRSPlugin extends Plugin {
     @Inject
     private ClientToolbar clientToolbar;
 
+    @Getter
     @Inject
     private TempleOSRSConfig config;
 
@@ -137,7 +146,7 @@ public class TempleOSRSPlugin extends Plugin {
             syncButtonManager.startUp();
         }
 
-        clogManager.startUp(syncButtonManager);
+        clogManager.startUp();
     }
 
     @Override
@@ -153,7 +162,7 @@ public class TempleOSRSPlugin extends Plugin {
 
     @Subscribe
     public void onConfigChanged(ConfigChanged event) {
-        if (event.getGroup().equals("TempleOSRS")) {
+        if (event.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP)) {
             if (client != null) {
                 menuManager.get().removePlayerMenuItem(TEMPLE);
                 if (config.playerLookup()) {

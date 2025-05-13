@@ -26,54 +26,69 @@ package com.templeosrs.util.collections;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
+import com.templeosrs.TempleOSRSConfig;
+import com.templeosrs.TempleOSRSPlugin;
+import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
+import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.api.events.GameTick;
-import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
 import okhttp3.*;
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
-import java.io.*;
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
+@Singleton
 public class CollectionLogManager {
-
     private final int VARBITS_ARCHIVE_ID = 14;
-    private final String CONFIG_GROUP = "TempleOSRS";
-    private static final String PLUGIN_USER_AGENT = "TempleOSRS RuneLite Plugin Collection Log Sync - For any issues/abuse Contact 44mikael on Discord (https://www.templeosrs.com)";
 
     private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
     private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
+    private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
 
     private Manifest manifest;
-    private Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
+    private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
-    // Keeps track of what collection log slots the user has set and map for their counts
-    private static final BitSet clogItemsBitSet = new BitSet();
-    private final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
+    /**
+     * Keeps track of what collection log slots the user has set
+     */
+    @Getter
+    protected final BitSet clogItemsBitSet = new BitSet();
 
-    private static Integer clogItemsCount = null;
+    /**
+     * Keeps track of the item count for each collection log item
+     */
+    @Getter
+    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
 
     // Map item ids to bit index in the bitset
-    private static final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
+    @Getter
+    private final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
+
     private int tickCollectionLogScriptFired = -1;
+
     private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
 
-    private SyncButtonManager syncButtonManager;
-
     @Inject
-    private OkHttpClient okHttpClient;
+    private SyncButtonManager syncButtonManager;
 
     @Inject
     private ScheduledExecutorService scheduledExecutorService;
@@ -81,32 +96,45 @@ public class CollectionLogManager {
     @Inject
     private Gson gson;
 
-    private final Client client;
-    private final ClientThread clientThread;
-    private final EventBus eventBus;
+    @Inject
+    private ItemManager itemManager;
+
+    @Getter
+    @Inject
+    private Client client;
+
+    @Getter
+    @Inject
+    private ClientThread clientThread;
 
     @Inject
-    private CollectionLogManager(
-            Client client,
-            ClientThread clientThread,
-            EventBus eventBus
-    ) {
-        this.client = client;
-        this.clientThread = clientThread;
-        this.eventBus = eventBus;
-    }
+    private EventBus eventBus;
 
-    public void startUp(SyncButtonManager mainSyncButtonManager) {
+    @Inject
+    private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
+
+    @Inject
+    private TempleOSRSPlugin templeOSRSPlugin;
+
+    @Inject
+    private ConfigManager configManager;
+
+    @Inject
+    private CollectionLogRequestManager requestManager;
+
+    public void startUp() {
         eventBus.register(this);
 
-        // I'm not sure if this is how passing the same instance of a SyncButtonManager should be done, but it was the first solution that worked for me
-        syncButtonManager = mainSyncButtonManager;
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.startUp();
+        }
 
         clientThread.invoke(() -> {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {
                 return false;
             }
             collectionLogItemIdsFromCache.addAll(parseCacheForClog());
+
             populateCollectionLogItemIdToBitsetIndex();
             final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
             for (int id : varbitIds) {
@@ -121,10 +149,27 @@ public class CollectionLogManager {
     public void shutDown() {
         eventBus.unregister(this);
 
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.shutDown();
+        }
+
         clogItemsBitSet.clear();
         clogItemsCountSet.clear();
-        clogItemsCount = null;
         syncButtonManager.shutDown();
+    }
+
+    @Subscribe
+    private void onConfigChanged(ConfigChanged configChanged)
+    {
+        if (!configChanged.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP)) {
+            return;
+        }
+
+        if (templeOSRSPlugin.getConfig().autoSyncClog()) {
+            collectionLogAutoSyncManager.startUp();
+        } else {
+            collectionLogAutoSyncManager.shutDown();
+        }
     }
 
     @Subscribe
@@ -151,11 +196,9 @@ public class CollectionLogManager {
             case CONNECTION_LOST:
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
-                clogItemsCount = null;
                 break;
         }
     }
-
 
     /**
      * Finds the index this itemId is assigned to in the collections mapping.
@@ -168,15 +211,15 @@ public class CollectionLogManager {
         if (collectionLogItemIdToBitsetIndex.isEmpty()) {
             return -1;
         }
+
         Integer result = collectionLogItemIdToBitsetIndex.get(itemId);
-        if (result == null) {
-//			log.debug("Item id {} not found in the mapping of items", itemId);
-            return -1;
-        }
-        return result;
+
+        return Objects.requireNonNullElse(result, -1);
     }
 
-    //CollectionLog Subscribe
+    /**
+     * Handles updating the collection log after the Temple sync button has been pressed.
+     */
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
         if (syncButtonManager.isSyncAllowed() && preFired.getScriptId() == 4100) {
@@ -184,7 +227,6 @@ public class CollectionLogManager {
             if (collectionLogItemIdToBitsetIndex.isEmpty()) {
                 return;
             }
-            clogItemsCount = collectionLogItemIdsFromCache.size();
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
@@ -238,7 +280,6 @@ public class CollectionLogManager {
             return;
         }
 
-
         submitPlayerData(profileKey, newPlayerData, oldPlayerData);
     }
 
@@ -253,8 +294,8 @@ public class CollectionLogManager {
 
         out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
         out.collectionLogCounts = clogItemsCountSet;
+        out.collectionLogItemCount = collectionLogItemIdsFromCache.size();
 
-        out.collectionLogItemCount = clogItemsCount;
         return out;
     }
 
@@ -283,22 +324,14 @@ public class CollectionLogManager {
                 delta
         );
 
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
-                .url(SUBMIT_URL)
-                .post(RequestBody.create(JSON, gson.toJson(submission)))
-                .build();
-
-        Call call = okHttpClient.newCall(request);
-        call.timeout().timeout(3, TimeUnit.SECONDS);
-        call.enqueue(new Callback() {
+        requestManager.uploadFullCollectionLog(submission, new Callback() {
             @Override
-            public void onFailure(Call call, IOException e) {
+            public void onFailure(@NotNull Call call, @NotNull IOException e) {
 //				log.debug("Failed to submit: ", e);
             }
 
             @Override
-            public void onResponse(Call call, Response response) {
+            public void onResponse(@NotNull Call call, @NotNull Response response) {
                 try {
                     if (!response.isSuccessful()) {
 //						log.debug("Failed to submit: {}", response.code());
@@ -314,11 +347,7 @@ public class CollectionLogManager {
     }
 
     private void checkManifest() {
-        Request request = new Request.Builder()
-                .addHeader("User-Agent", PLUGIN_USER_AGENT)
-                .url(MANIFEST_URL)
-                .build();
-        okHttpClient.newCall(request).enqueue(new Callback() {
+        requestManager.getCollectionLogManifest(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
 //				log.debug("Failed to get manifest: ", e);
@@ -423,5 +452,4 @@ public class CollectionLogManager {
         int mask = (1 << ((msb - lsb) + 1)) - 1;
         return (value >> lsb) & mask;
     }
-
 }
