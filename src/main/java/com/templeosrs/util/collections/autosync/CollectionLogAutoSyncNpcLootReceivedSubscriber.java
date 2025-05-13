@@ -7,7 +7,6 @@ import net.runelite.client.game.ItemManager;
 import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class CollectionLogAutoSyncNpcLootReceivedSubscriber
@@ -30,7 +29,7 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
             return;
         }
 
-        AtomicBoolean isNewCollectionLogFound = new AtomicBoolean(false);
+        final int previousPendingSyncItemsCount = collectionLogAutoSyncManager.pendingSyncItems.size();
 
         npcLootReceived.getItems().forEach(item -> {
             final int itemId = item.getId();
@@ -39,12 +38,10 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(Pair.of(itemName, itemId));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
-
-                isNewCollectionLogFound.set(true);
             }
         });
 
-        if (isNewCollectionLogFound.get()) {
+        if (previousPendingSyncItemsCount < collectionLogAutoSyncManager.pendingSyncItems.size()) {
             collectionLogAutoSyncManager.startSyncCountdown();
         }
     }

@@ -13,7 +13,6 @@ import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class CollectionLogAutoSyncItemContainerChangedSubscriber
@@ -47,7 +46,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
 
         final Multiset<Integer> inventoryDifference = Multisets.difference(currentInventoryItems, inventoryItems);
 
-        AtomicBoolean isNewCollectionLogFound = new AtomicBoolean(false);
+        final int previousPendingSyncItemsCount = collectionLogAutoSyncManager.pendingSyncItems.size();
 
         inventoryDifference.entrySet().forEach(item -> {
             String itemName = itemManager.getItemComposition(item.getElement()).getName();
@@ -56,8 +55,6 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(Pair.of(itemName, itemId));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
-
-                isNewCollectionLogFound.set(true);
             }
         });
 
@@ -66,7 +63,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
         inventoryItems.clear();
         inventoryItems.addAll(currentInventoryItems);
 
-        if (isNewCollectionLogFound.get()) {
+        if (previousPendingSyncItemsCount < collectionLogAutoSyncManager.pendingSyncItems.size()) {
             collectionLogAutoSyncManager.startSyncCountdown();
         }
     }
