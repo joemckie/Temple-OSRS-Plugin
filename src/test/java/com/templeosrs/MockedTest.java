@@ -3,6 +3,7 @@ package com.templeosrs;
 import com.google.inject.Guice;
 import com.google.inject.testing.fieldbinder.Bind;
 import com.google.inject.testing.fieldbinder.BoundFieldModule;
+import com.templeosrs.util.collections.autosync.LoggedInState;
 import net.runelite.api.*;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.chat.ChatMessageManager;
@@ -71,6 +72,9 @@ public class MockedTest {
 
     @Bind
     protected final GameStateChanged gameStateChanged = mock(GameStateChanged.class);
+
+    @Bind
+    protected final LoggedInState loggedInState = spy(LoggedInState.class);
 
     @BeforeEach
     protected void beforeEach()

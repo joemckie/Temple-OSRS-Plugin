@@ -27,9 +27,9 @@ public class CollectionLogAutoSyncConfigCheckerTest extends MockedCollectionLogA
     @DisplayName("Ensure a warning is displayed on login when the \"new collection log\" option is disabled")
     void emitsWarningWhenNewCollectionLogOptionIsDisabled()
     {
+        logIn();
         setCollectionLogOptionValue(0);
 
-        logIn();
         verifyChatMessageHasBeenDisplayedTimes(1);
     }
 
@@ -37,9 +37,9 @@ public class CollectionLogAutoSyncConfigCheckerTest extends MockedCollectionLogA
     @DisplayName("Ensure a warning is not displayed if it has already been shown for the current session")
     void doesNotEmitWarningWhenWarningHasBeenShownForCurrentSession()
     {
+        logIn();
         setCollectionLogOptionValue(0);
 
-        logIn();
         verifyChatMessageHasBeenDisplayedTimes(1);
 
         hopWorld();
@@ -50,9 +50,9 @@ public class CollectionLogAutoSyncConfigCheckerTest extends MockedCollectionLogA
     @DisplayName("Ensure a warning is displayed when starting a new login session when the \"new collection log\"  option is disabled")
     void emitsWarningWhenStartingNewSession()
     {
+        logIn();
         setCollectionLogOptionValue(0);
 
-        logIn();
         verifyChatMessageHasBeenDisplayedTimes(1);
 
         logOut();

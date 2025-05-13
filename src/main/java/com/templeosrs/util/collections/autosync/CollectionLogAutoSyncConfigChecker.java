@@ -32,7 +32,10 @@ public class CollectionLogAutoSyncConfigChecker {
     @Inject
     private CollectionLogManager collectionLogManager;
 
-    private boolean hasShownCollectionLogSettingWarning = false;
+    @Inject
+    private LoggedInState loggedInState;
+
+    private int lastShownCollectionLogSettingWarningTick = -1;
 
     /**
      * Potential values are:
@@ -56,7 +59,20 @@ public class CollectionLogAutoSyncConfigChecker {
 
     void shutDown()
     {
-        hasShownCollectionLogSettingWarning = false;
+        lastShownCollectionLogSettingWarningTick = -1;
+    }
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged event) {
+        GameState gameState = event.getGameState();
+
+        if (gameState == GameState.CONNECTION_LOST || gameState == GameState.HOPPING) {
+            lastShownCollectionLogSettingWarningTick = client.getTickCount(); // avoid warning during DC or hopping
+        }
+
+        if (gameState == GameState.LOGIN_SCREEN) {
+            lastShownCollectionLogSettingWarningTick = -1;
+        }
     }
 
     /**
@@ -71,31 +87,21 @@ public class CollectionLogAutoSyncConfigChecker {
     }
 
     /**
-     * Sets the hasShownCollectionLogSettingWarning flag to false on logout.
-     * Allows for the warning message to be shown again when starting a new login session
-     */
-    @Subscribe
-    private void onGameStateChanged(GameStateChanged gameStateChanged)
-    {
-        if (gameStateChanged.getGameState() == GameState.LOGIN_SCREEN) {
-            hasShownCollectionLogSettingWarning = false;
-        }
-    }
-
-    /**
-     * If the auto-sync clog option is enabled, the warning has not been shown, and the
+     * If the auto-sync clog option is enabled, the warning has not been shown recently, and the
      * clog notification option is disabled, shows a warning to the player to tell them to enable the in-game option.
      */
     private void checkAndWarnForCollectionLogNotificationSetting(int collectionLogOptionVarbitValue) {
         if (
                 !templeOSRSPlugin.getConfig().autoSyncClog() ||
-                hasShownCollectionLogSettingWarning ||
+                loggedInState.isLoggedOut() ||
+                (lastShownCollectionLogSettingWarningTick != -1 &&
+                        client.getTickCount() - lastShownCollectionLogSettingWarningTick < 16) ||
                 enabledCollectionLogNotificationSettingValues.contains(collectionLogOptionVarbitValue)
         ) {
             return;
         }
 
-        hasShownCollectionLogSettingWarning = true;
+        lastShownCollectionLogSettingWarningTick = client.getTickCount();
         sendEnableCollectionLogSettingsMessage();
     }
 

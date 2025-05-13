@@ -55,6 +55,8 @@ public class MockedCollectionLogAutoSyncTest extends MockedTest {
 
     void logIn()
     {
+        when(loggedInState.isLoggedOut()).thenReturn(false);
+
         final GameStateChanged gameStateChanged = buildGameStateChangedEvent(GameState.LOGGED_IN);
 
         eventBus.post(gameStateChanged);
@@ -62,6 +64,8 @@ public class MockedCollectionLogAutoSyncTest extends MockedTest {
 
     void logOut()
     {
+        when(loggedInState.isLoggedOut()).thenReturn(true);
+
         final GameStateChanged gameStateChanged = buildGameStateChangedEvent(GameState.LOGIN_SCREEN);
 
         eventBus.post(gameStateChanged);

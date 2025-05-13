@@ -34,6 +34,9 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogAutoSyncConfigChecker collectionLogAutoSyncConfigChecker;
+
+    @Inject
+    private LoggedInState loggedInState;
     
     @Inject
     private OkHttpClient okHttpClient;
@@ -70,6 +73,7 @@ public class CollectionLogAutoSyncManager {
         eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
         eventBus.register(collectionLogAutoSyncGameTickSubscriber);
         eventBus.register(collectionLogAutoSyncConfigChecker);
+        eventBus.register(loggedInState);
 
         collectionLogAutoSyncConfigChecker.startUp();
     }
@@ -81,6 +85,7 @@ public class CollectionLogAutoSyncManager {
         eventBus.unregister(collectionLogAutoSyncNpcLootReceivedSubscriber);
         eventBus.unregister(collectionLogAutoSyncGameTickSubscriber);
         eventBus.unregister(collectionLogAutoSyncConfigChecker);
+        eventBus.unregister(loggedInState);
 
         collectionLogAutoSyncConfigChecker.shutDown();
     }
