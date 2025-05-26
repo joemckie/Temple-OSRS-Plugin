@@ -283,7 +283,9 @@ public interface TempleOSRSConfig extends Config
 			name = "Max Cached Players",
 			description = "Maximum number of players to keep in the database (excluding yourself)." +
 					" The more players the more MB kept on database. " +
-					"Default number of players in database is 50"
+					"Default number of players in database is 50",
+			position = 3,
+			section = clogOptions
 	)
 	default int maxCachedPlayers() { return 50; }
 }

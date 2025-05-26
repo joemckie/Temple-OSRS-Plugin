@@ -44,7 +44,6 @@ import static java.lang.Math.round;
 @Slf4j
 @Singleton
 public class SyncButtonManager {
-
     private static final int COLLECTION_LOG_SETUP = 7797;
     private static final int[] SPRITE_IDS_INACTIVE = {
             SpriteID.DIALOG_BACKGROUND,

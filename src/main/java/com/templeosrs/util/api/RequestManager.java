@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 
 import java.io.IOException;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.http.api.RuneLiteAPI.JSON;
@@ -15,10 +16,10 @@ import static net.runelite.http.api.RuneLiteAPI.JSON;
 @Slf4j
 public class RequestManager {
     @Inject
-    protected Gson gson;
+    private Gson gson;
 
     @Inject
-    OkHttpClient okHttpClient;
+    private OkHttpClient okHttpClient;
 
     protected final String scheme = "https";
 
@@ -55,20 +56,18 @@ public class RequestManager {
         call.enqueue(callback);
     }
 
-    private ResponseBody doRequest(Request request) throws IOException {
+    private String doRequest(Request request) throws IOException {
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                log.warn("HTTP error fetching {}: {}", request.url(), response.code());
+                log.warn("❌ HTTP error fetching {}: {}", request.url(), response.code());
 
                 return null;
             }
 
-            ResponseBody body = response.body();
+            String body = Objects.requireNonNull(response.body()).string();
 
-            if (body == null || body.string().isEmpty()) {
-                log.warn("Empty response body was returned from {}", request.url());
-
-                return null;
+            if (body.isEmpty()) {
+                log.warn("❌ Empty response body was returned from {}", request.url());
             }
 
             return body;
@@ -79,12 +78,10 @@ public class RequestManager {
      * Initiates a synchronous GET request.
      * @param url The URL to send the request to.
      */
-    protected ResponseBody get(@NotNull HttpUrl url) throws IOException {
+    protected String get(@NotNull HttpUrl url) throws IOException {
         final Request request = buildRequest(url).get().build();
 
-        try (ResponseBody body = doRequest(request)) {
-            return body;
-        }
+        return doRequest(request);
     }
 
     /**

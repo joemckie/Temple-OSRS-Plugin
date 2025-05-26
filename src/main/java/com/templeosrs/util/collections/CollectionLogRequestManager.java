@@ -1,5 +1,6 @@
 package com.templeosrs.util.collections;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.stream.JsonReader;
@@ -10,10 +11,14 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
+import javax.inject.Inject;
 import java.io.StringReader;
 
 @Slf4j
 public class CollectionLogRequestManager extends RequestManager {
+    @Inject
+    private Gson gson;
+
     /**
      * Uploads newly obtained collection log items to the server.
      * Used by the auto-sync feature to automatically synchronise the collection log.
@@ -83,9 +88,9 @@ public class CollectionLogRequestManager extends RequestManager {
                 .build();
 
         try {
-            ResponseBody responseBody = get(url);
+            String response = get(url);
 
-            JsonReader reader = new JsonReader(new StringReader(responseBody.string()));
+            JsonReader reader = new JsonReader(new StringReader(response));
             reader.setLenient(true);
 
             JsonElement element = gson.fromJson(reader, JsonElement.class);
@@ -123,13 +128,13 @@ public class CollectionLogRequestManager extends RequestManager {
                 .build();
 
         try {
-            String responseBody = get(url).string();
+            String response = get(url);
 
-            if (responseBody.contains("\"Code\":402") && responseBody.contains("has not synced")) {
+            if (response.contains("\"Code\":402") && response.contains("has not synced")) {
                 return "error:unsynced";
             }
 
-            return responseBody;
+            return response;
         } catch (Exception e) {
             log.error("❌ Exception while fetching log for {}: {}", username, e.getMessage());
 

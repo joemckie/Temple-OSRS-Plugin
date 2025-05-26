@@ -11,8 +11,11 @@ import com.templeosrs.util.collections.data.CollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.IndexedSprite;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.EventBus;
@@ -26,8 +29,7 @@ import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.sql.Timestamp;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
 public class CollectionLogChatCommandsManager {
@@ -36,9 +38,6 @@ public class CollectionLogChatCommandsManager {
 
     @Inject
     private Client client;
-
-    @Inject
-    private ExecutorService executor;
 
     @Inject
     private TempleOSRSPlugin templeOSRSPlugin;
@@ -51,6 +50,15 @@ public class CollectionLogChatCommandsManager {
 
     @Inject
     private CollectionLogRequestManager collectionLogRequestManager;
+
+    @Inject
+    private ScheduledExecutorService scheduledExecutorService;
+
+    @Inject
+    private ClientThread clientThread;
+
+    @Inject
+    private CollectionParser collectionParser;
 
     private final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
 
@@ -67,21 +75,13 @@ public class CollectionLogChatCommandsManager {
     {
         eventBus.unregister(this);
 
-//        clientToolbar.removeNavigation(navButton);
-
         // 🧼 Clear cached icons and IDs to prevent memory buildup
         itemIconIndexes.clear();
         loadedItemIds.clear();
-
-        if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
-        }
-
-        log.debug("Collection Tracker stopped!");
     }
 
-    private void syncCollectionLog(Client client) {
-        Executors.newSingleThreadExecutor().execute(() -> {
+    private void syncCollectionLog() {
+        scheduledExecutorService.execute(() -> {
             log.debug("🔄 Starting syncCollectionLog()...");
 
             CollectionDatabase.clearAll();
@@ -104,11 +104,32 @@ public class CollectionLogChatCommandsManager {
             }
 
             log.debug("🧩 Parsing and storing JSON...");
-            CollectionParser parser = new CollectionParser();
 
-            parser.parseAndStore(PlayerNameUtils.normalizePlayerName(username), json);
+            collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(username), json);
+
             log.debug("✅ Parsing complete.");
         });
+    }
+
+    @Subscribe
+    public void onGameStateChanged(GameStateChanged gameStateChanged) {
+        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
+            clientThread.invokeLater(() -> {
+                final String username = client.getLocalPlayer().getName();
+
+                if (username == null) {
+                    return false;
+                }
+
+                if (CollectionDatabase.hasPlayerData(username.toLowerCase())) {
+                    return true;
+                }
+
+                syncCollectionLog();
+
+                return true;
+            });
+        }
     }
 
     @Subscribe
@@ -139,11 +160,29 @@ public class CollectionLogChatCommandsManager {
             return;
 
         // Normalize boss name
-        String bossInput = parts[0].trim().replace(' ', '_');
-        CollectionLogCategory bossKey = CategoryAliases.CATEGORY_ALIASES.getOrDefault(
-                bossInput.toLowerCase(),
-                CollectionLogCategory.valueOf(bossInput.toLowerCase())
-        );
+        String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
+        final boolean isAliasFound = CategoryAliases.CATEGORY_ALIASES.containsKey(bossInput);
+        CollectionLogCategory bossKey;
+
+        try {
+            bossKey = isAliasFound
+                    ? CategoryAliases.CATEGORY_ALIASES.get(bossInput)
+                    : CollectionLogCategory.valueOf(bossInput);
+        } catch (IllegalArgumentException e) {
+            log.warn("❌ No alias or category found for {}", bossInput);
+
+            final String finalMessage = "\"" + bossInput + "\" is not a valid collection log category or alias";
+
+            chatMessageManager.queue(
+                    QueuedMessage.builder()
+                            .type(ChatMessageType.GAMEMESSAGE)
+                            .runeLiteFormattedMessage("<col=ff0000>" + finalMessage + "</col>")
+                            .build()
+            );
+
+            return;
+        }
+
 
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
@@ -153,7 +192,7 @@ public class CollectionLogChatCommandsManager {
                 : "";
         boolean isLocalPlayer = normalizedPlayerName.equalsIgnoreCase(localName);
 
-        executor.execute(() ->
+        scheduledExecutorService.execute(() ->
         {
             String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(normalizedPlayerName);
             Timestamp dbTimestamp = CollectionDatabase.getLatestTimestamp(normalizedPlayerName);
@@ -195,8 +234,7 @@ public class CollectionLogChatCommandsManager {
                     CollectionDatabase.pruneOldPlayers(localName, templeOSRSPlugin.getConfig().maxCachedPlayers());
                 }
 
-                CollectionParser parser = new CollectionParser();
-                parser.parseAndStore(PlayerNameUtils.normalizePlayerName(playerName), json);
+                collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(playerName), json);
             }
             else
             {
