@@ -29,8 +29,8 @@ public class CollectionLogRequestManager extends RequestManager {
     public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data, Callback callback)
     {
         final HttpUrl url = new HttpUrl.Builder()
-                .scheme("http")
-                .host("127.0.0.1")
+                .scheme(scheme)
+                .host(host)
                 .port(3000)
                 .addPathSegments("api/sync")
                 .build();
