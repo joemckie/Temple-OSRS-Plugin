@@ -31,7 +31,6 @@ public class CollectionLogRequestManager extends RequestManager {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
-                .port(3000)
                 .addPathSegments("api/collection-log/sync_new_collections.php")
                 .build();
 
