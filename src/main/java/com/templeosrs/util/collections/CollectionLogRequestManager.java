@@ -32,7 +32,7 @@ public class CollectionLogRequestManager extends RequestManager {
                 .scheme(scheme)
                 .host(host)
                 .port(3000)
-                .addPathSegments("api/sync")
+                .addPathSegments("api/collection-log/sync_new_collections.php")
                 .build();
 
         post(url, data, callback);
