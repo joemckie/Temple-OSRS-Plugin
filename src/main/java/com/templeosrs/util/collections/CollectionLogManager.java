@@ -29,6 +29,11 @@ import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
+import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandsManager;
+import com.templeosrs.util.collections.data.Manifest;
+import com.templeosrs.util.collections.data.PlayerData;
+import com.templeosrs.util.collections.data.PlayerDataSubmission;
+import com.templeosrs.util.collections.data.PlayerProfile;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -122,8 +127,13 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogRequestManager requestManager;
 
+    @Inject
+    private CollectionLogChatCommandsManager collectionLogChatCommandsManager;
+
     public void startUp() {
         eventBus.register(this);
+
+        collectionLogChatCommandsManager.startUp();
 
         if (templeOSRSPlugin.getConfig().autoSyncClog()) {
             collectionLogAutoSyncManager.startUp();
@@ -148,6 +158,8 @@ public class CollectionLogManager {
 
     public void shutDown() {
         eventBus.unregister(this);
+
+        collectionLogChatCommandsManager.shutDown();
 
         if (templeOSRSPlugin.getConfig().autoSyncClog()) {
             collectionLogAutoSyncManager.shutDown();

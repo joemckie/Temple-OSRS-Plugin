@@ -23,32 +23,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.data;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Value;
+import net.runelite.client.config.RuneScapeProfileType;
 
-import java.util.HashMap;
-import java.util.Map;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class PlayerData
+@Value
+public class PlayerProfile
 {
-    public Integer collectionLogItemCount = null;
-    public String collectionLogSlots = "";
-    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
-
-    public boolean isEmpty()
-    {
-        return collectionLogSlots.isEmpty() && collectionLogItemCount == null;
-    }
-
-    public void clearCollectionLog()
-    {
-        collectionLogSlots = "";
-        collectionLogItemCount = null;
-    }
+    String username;
+    RuneScapeProfileType profileType;
 }

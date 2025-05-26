@@ -2,10 +2,7 @@ package com.templeosrs;
 
 import com.templeosrs.util.CurrentTopRanges;
 import com.templeosrs.util.PlayerRanges;
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 
 @ConfigGroup("TempleOSRS")
 public interface TempleOSRSConfig extends Config
@@ -279,4 +276,14 @@ public interface TempleOSRSConfig extends Config
 	{
 		return false;
 	}
+
+	@Range(min = 50, max = 200)
+	@ConfigItem(
+			keyName = "maxCachedPlayers",
+			name = "Max Cached Players",
+			description = "Maximum number of players to keep in the database (excluding yourself)." +
+					" The more players the more MB kept on database. " +
+					"Default number of players in database is 50"
+	)
+	default int maxCachedPlayers() { return 50; }
 }

@@ -23,7 +23,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.data;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

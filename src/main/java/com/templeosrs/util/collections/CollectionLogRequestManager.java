@@ -1,11 +1,18 @@
 package com.templeosrs.util.collections;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.stream.JsonReader;
 import com.templeosrs.util.api.RequestManager;
 import com.templeosrs.util.collections.autosync.PlayerDataSync;
-import okhttp3.Callback;
-import okhttp3.HttpUrl;
+import com.templeosrs.util.collections.data.PlayerDataSubmission;
+import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.StringReader;
+
+@Slf4j
 public class CollectionLogRequestManager extends RequestManager {
     /**
      * Uploads newly obtained collection log items to the server.
@@ -17,9 +24,10 @@ public class CollectionLogRequestManager extends RequestManager {
     public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data, Callback callback)
     {
         final HttpUrl url = new HttpUrl.Builder()
-                .scheme(scheme)
-                .host(host)
-                .addPathSegments("api/collection-log/sync_new_collections.php")
+                .scheme("http")
+                .host("127.0.0.1")
+                .port(3000)
+                .addPathSegments("api/sync")
                 .build();
 
         post(url, data, callback);
@@ -58,5 +66,74 @@ public class CollectionLogRequestManager extends RequestManager {
                 .build();
 
         get(url, callback);
+    }
+
+    /**
+     * Retrieves the time the user's collection log last changed from the Player Info endpoint
+     *
+     * @param username The username to check
+     */
+    public String getLastChangedTimestamp(String username) {
+        final HttpUrl url = new HttpUrl.Builder()
+                .scheme(scheme)
+                .host(host)
+                .addPathSegments("api/player_info.php")
+                .addQueryParameter("player", username)
+                .addQueryParameter("cloginfo", "1")
+                .build();
+
+        try {
+            ResponseBody responseBody = get(url);
+
+            JsonReader reader = new JsonReader(new StringReader(responseBody.string()));
+            reader.setLenient(true);
+
+            JsonElement element = gson.fromJson(reader, JsonElement.class);
+
+            if (element.isJsonObject()) {
+                JsonObject root = element.getAsJsonObject();
+
+                if (root.has("data")) {
+                    JsonObject data = root.getAsJsonObject("data");
+
+                    if (data.has("collection_log")) {
+                        JsonObject collectionLog = data.getAsJsonObject("collection_log");
+
+                        if (collectionLog.has("last_changed")) {
+                            return collectionLog.get("last_changed").getAsString();
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to get last_changed for {}: {}", username, e.getMessage());
+        }
+
+        return null;
+    }
+
+    public String getPlayerCollectionLog(String username)
+    {
+        final HttpUrl url = new HttpUrl.Builder()
+                .scheme(scheme)
+                .host(host)
+                .addPathSegments("api/collection-log/player_collection_log.php")
+                .addQueryParameter("player", username)
+                .addQueryParameter("categories", "all")
+                .build();
+
+        try {
+            String responseBody = get(url).string();
+
+            if (responseBody.contains("\"Code\":402") && responseBody.contains("has not synced")) {
+                return "error:unsynced";
+            }
+
+            return responseBody;
+        } catch (Exception e) {
+            log.error("❌ Exception while fetching log for {}: {}", username, e.getMessage());
+
+            return null;
+        }
     }
 }

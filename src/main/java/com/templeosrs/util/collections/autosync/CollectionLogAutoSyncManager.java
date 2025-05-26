@@ -2,7 +2,7 @@ package com.templeosrs.util.collections.autosync;
 
 import com.google.gson.Gson;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.PlayerProfile;
+import com.templeosrs.util.collections.data.PlayerProfile;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;

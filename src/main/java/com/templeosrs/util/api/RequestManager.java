@@ -1,18 +1,21 @@
 package com.templeosrs.util.api;
 
 import com.google.gson.Gson;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 import static net.runelite.http.api.RuneLiteAPI.JSON;
 
+@Slf4j
 public class RequestManager {
     @Inject
-    Gson gson;
+    protected Gson gson;
 
     @Inject
     OkHttpClient okHttpClient;
@@ -52,6 +55,38 @@ public class RequestManager {
         call.enqueue(callback);
     }
 
+    private ResponseBody doRequest(Request request) throws IOException {
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                log.warn("HTTP error fetching {}: {}", request.url(), response.code());
+
+                return null;
+            }
+
+            ResponseBody body = response.body();
+
+            if (body == null || body.string().isEmpty()) {
+                log.warn("Empty response body was returned from {}", request.url());
+
+                return null;
+            }
+
+            return body;
+        }
+    }
+
+    /**
+     * Initiates a synchronous GET request.
+     * @param url The URL to send the request to.
+     */
+    protected ResponseBody get(@NotNull HttpUrl url) throws IOException {
+        final Request request = buildRequest(url).get().build();
+
+        try (ResponseBody body = doRequest(request)) {
+            return body;
+        }
+    }
+
     /**
      * Initiates a GET request.
      * @param url The URL to send the request to.
@@ -77,5 +112,5 @@ public class RequestManager {
             .build();
 
         doRequest(request, callback, 3);
-    };
+    }
 }
