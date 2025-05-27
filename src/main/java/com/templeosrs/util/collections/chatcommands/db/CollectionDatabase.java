@@ -103,48 +103,6 @@ public class CollectionDatabase {
         }
     }
 
-    public static void insertItem(String playerName, String category, int itemId, String itemName, int count, String date) {
-        try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO collection_log (player_name, category, item_id, item_name, item_count, collected_date, last_accessed) VALUES(?,?,?,?,?,?,?)")) {
-            ps.setString(1, playerName);
-            ps.setString(2, category);
-            ps.setInt(3, itemId);
-            ps.setString(4, itemName);
-            ps.setInt(5, count);
-            ps.setTimestamp(6, Timestamp.valueOf(date));
-            ps.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
-            ps.executeUpdate();
-        } catch (SQLException e) {
-            log.warn("Error inserting item: {}", e.getMessage());
-        }
-    }
-
-    public static List<CollectionItem> getAllItems(String playerName) {
-        List<CollectionItem> items = new ArrayList<>();
-
-        String sql = "SELECT category, item_id, item_name, item_count, collected_date FROM collection_log WHERE player_name = ?";
-
-        try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, playerName.toLowerCase());
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-                String category = rs.getString("category");
-                int itemId = rs.getInt("item_id");
-                String name = rs.getString("item_name");
-                int count = rs.getInt("item_count");
-                Timestamp date = rs.getTimestamp("collected_date");
-
-                items.add(new CollectionItem(category, itemId, name, count, date));
-            }
-        } catch (SQLException e) {
-            log.warn("Error fetching items for player: {}", e.getMessage());
-        }
-
-        return items;
-    }
-
     public static Timestamp getLatestTimestamp(String playerName) {
         String sql = "SELECT MAX(collected_date) FROM collection_log WHERE player_name = ?";
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -158,7 +116,6 @@ public class CollectionDatabase {
         }
         return null;
     }
-
 
     public static void clearAll() {
         try (Connection conn = getConnection();

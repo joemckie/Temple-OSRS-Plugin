@@ -111,17 +111,30 @@ public class CollectionLogChatCommandsManager {
         });
     }
 
+    private boolean isDataOutdated(String username)
+    {
+        String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(username);
+        Timestamp dbTimestamp = CollectionDatabase.getLatestTimestamp(username);
+        Timestamp apiTimestamp = lastChanged != null ? Timestamp.valueOf(lastChanged) : null;
+
+        log.debug("🕒 [Compare] {} | DB: {} | API: {}", username, dbTimestamp, apiTimestamp);
+
+        return dbTimestamp == null || dbTimestamp.before(apiTimestamp);
+    }
+
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
             clientThread.invokeLater(() -> {
                 final String username = client.getLocalPlayer().getName();
 
+                // Wait for username to be available
                 if (username == null) {
                     return false;
                 }
 
-                if (CollectionDatabase.hasPlayerData(username.toLowerCase())) {
+                // Skip sync if the player's collection log has already been saved
+                if (!isDataOutdated(username.toLowerCase()) && CollectionDatabase.hasPlayerData(username.toLowerCase())) {
                     return true;
                 }
 
@@ -193,14 +206,9 @@ public class CollectionLogChatCommandsManager {
 
         scheduledExecutorService.execute(() ->
         {
-            String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(normalizedPlayerName);
-            Timestamp dbTimestamp = CollectionDatabase.getLatestTimestamp(normalizedPlayerName);
-            Timestamp apiTimestamp = lastChanged != null ? Timestamp.valueOf(lastChanged) : null;
-
-            log.debug("🕒 [Compare] {} | DB: {} | API: {}", normalizedPlayerName, dbTimestamp, apiTimestamp);
-
-            boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
-            boolean shouldUpdate = !hasLocalData || (apiTimestamp != null && (dbTimestamp == null || dbTimestamp.before(apiTimestamp)));
+            final boolean isDataOutdated = isDataOutdated(normalizedPlayerName);
+            final boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
+            final boolean shouldUpdate = !hasLocalData || isDataOutdated;
 
             if (shouldUpdate)
             {
