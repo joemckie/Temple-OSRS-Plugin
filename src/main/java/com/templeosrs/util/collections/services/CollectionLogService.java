@@ -34,7 +34,7 @@ public class CollectionLogService {
 
         log.debug("🕒 [Compare] {} | DB: {} | API: {}", username, dbTimestamp, apiTimestamp);
 
-        return dbTimestamp == null || dbTimestamp.before(apiTimestamp);
+        return dbTimestamp != null && !dbTimestamp.before(apiTimestamp);
     }
 
     public void syncCollectionLog() {
