@@ -1,5 +1,10 @@
 package com.templeosrs.util.collections;
 
+/**
+ * All available categories that can be used on the Player Collection Log endpoint.
+ *
+ * @link <a href="https://templeosrs.com/api/collection-log/category_parameters.php">Full category list</a>
+ */
 public enum CollectionLogCategory {
     all,
     bosses,

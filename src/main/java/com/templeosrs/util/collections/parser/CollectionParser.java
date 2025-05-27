@@ -21,6 +21,11 @@ public class CollectionParser {
     @Inject
     private Gson gson;
 
+    /**
+     * Parses Temple's collection log response and persists it to the local database.
+     * @param rawUsername The username associated with the collection log data
+     * @param json The raw JSON response from the Player Collection Log API
+     */
     public void parseAndStore(String rawUsername, String json) {
         final String username = rawUsername.toLowerCase();
 

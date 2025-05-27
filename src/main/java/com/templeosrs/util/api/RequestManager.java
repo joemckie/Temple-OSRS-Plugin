@@ -56,6 +56,12 @@ public class RequestManager {
         call.enqueue(callback);
     }
 
+    /**
+     * Initiates a synchronous request with no timeout.
+     * @param request The request to be sent.
+     * @return The request data.
+     * @throws IOException The request error.
+     */
     private String doRequest(Request request) throws IOException {
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {

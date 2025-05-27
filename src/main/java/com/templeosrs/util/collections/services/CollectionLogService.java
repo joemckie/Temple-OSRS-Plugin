@@ -26,6 +26,11 @@ public class CollectionLogService {
     @Inject
     private CollectionParser collectionParser;
 
+    /**
+     * Compares the timestamp of the latest collection log to the saved data.
+     * @param username The username to check
+     * @return True if the saved data is the latest available.
+     */
     public boolean isDataFresh(String username)
     {
         String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(username);
@@ -37,6 +42,9 @@ public class CollectionLogService {
         return dbTimestamp != null && !dbTimestamp.before(apiTimestamp);
     }
 
+    /**
+     * Synchronises the player's cached collection log.
+     */
     public void syncCollectionLog() {
         scheduledExecutorService.execute(() -> {
             log.debug("🔄 Starting syncCollectionLog()...");

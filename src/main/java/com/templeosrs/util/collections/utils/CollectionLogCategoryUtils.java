@@ -5,6 +5,9 @@ import com.templeosrs.util.collections.CollectionLogCategory;
 import java.util.Map;
 
 public class CollectionLogCategoryUtils {
+    /**
+     * Category aliases to be used in the !col command. e.g. "!col kree"
+     */
     public static final Map<String, CollectionLogCategory> CATEGORY_ALIASES = Map.<String, CollectionLogCategory>ofEntries(
             // === Bosses ===
             Map.entry("armadyl", CollectionLogCategory.kree_arra),
@@ -157,6 +160,10 @@ public class CollectionLogCategoryUtils {
             Map.entry("theatre", CollectionLogCategory.theatre_of_blood)
     );
 
+    /**
+     * Category title overrides to be used by the !col command response.
+     * Provides a better format than title-casing for categories that contain punctuation, e.g. "Kree Arra" -> "Kree'arra"
+     */
     public static Map<CollectionLogCategory, String> CATEGORY_TITLE_OVERRIDES = Map.ofEntries(
             Map.entry(CollectionLogCategory.kree_arra, "Kree'arra"),
             Map.entry(CollectionLogCategory.vetion_and_calvarion, "Vet'ion and Calvar'ion"),

@@ -2,7 +2,11 @@ package com.templeosrs;
 
 import com.templeosrs.util.CurrentTopRanges;
 import com.templeosrs.util.PlayerRanges;
-import net.runelite.client.config.*;
+import net.runelite.client.config.Config;
+import net.runelite.client.config.ConfigGroup;
+import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 
 @ConfigGroup("TempleOSRS")
 public interface TempleOSRSConfig extends Config

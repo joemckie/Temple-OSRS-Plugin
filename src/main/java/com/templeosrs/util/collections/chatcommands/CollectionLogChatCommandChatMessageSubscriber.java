@@ -237,6 +237,11 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         });
     }
 
+    /**
+     * Converts a string to title case, e.g. "theatre of blood" -> "Theatre of Blood"
+     * @param input The unformatted string
+     * @return The title-cased string
+     */
     private String toTitleCase(String input) {
         if (input == null || input.isEmpty()) return input;
 
@@ -261,6 +266,10 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         return titleCase.toString().trim();
     }
 
+    /**
+     * Loads the in-game icons for a given item list, ready to be used in the chat message.
+     * @param items The item list for which to load item icons.
+     */
     private void loadItemIcons(List<CollectionItem> items) {
         List<CollectionItem> newItems = new ArrayList<>();
 

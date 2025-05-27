@@ -1,7 +1,11 @@
 package com.templeosrs.util.collections.utils;
 
 public class PlayerNameUtils {
-    // Normalize player name by removing Ironman prefixes and formatting
+    /**
+     * Normalises the player's name by removing Ironman prefixes and formatting.
+     * @param playerName The player name to normalise.
+     * @return The normalised player name.
+     */
     public static String normalizePlayerName(String playerName) {
         if (playerName == null) return "";
 
