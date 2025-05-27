@@ -29,22 +29,22 @@ import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
-import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandsManager;
+import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
 import com.templeosrs.util.collections.data.Manifest;
 import com.templeosrs.util.collections.data.PlayerData;
 import com.templeosrs.util.collections.data.PlayerDataSubmission;
 import com.templeosrs.util.collections.data.PlayerProfile;
+import com.templeosrs.util.collections.database.CollectionDatabase;
+import com.templeosrs.util.collections.services.CollectionLogService;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.game.ItemManager;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -63,9 +63,6 @@ import java.util.stream.Collectors;
 public class CollectionLogManager {
     private final int VARBITS_ARCHIVE_ID = 14;
 
-    private static final String MANIFEST_URL = "https://templeosrs.com/collection-log/manifest.json";
-    private static final String SUBMIT_URL = "https://templeosrs.com/api/collection-log/sync_collection.php";
-    private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
     private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
 
     private Manifest manifest;
@@ -101,9 +98,6 @@ public class CollectionLogManager {
     @Inject
     private Gson gson;
 
-    @Inject
-    private ItemManager itemManager;
-
     @Getter
     @Inject
     private Client client;
@@ -122,18 +116,22 @@ public class CollectionLogManager {
     private TempleOSRSPlugin templeOSRSPlugin;
 
     @Inject
-    private ConfigManager configManager;
-
-    @Inject
     private CollectionLogRequestManager requestManager;
 
     @Inject
-    private CollectionLogChatCommandsManager collectionLogChatCommandsManager;
+    private CollectionLogService collectionLogService;
+
+    @Inject
+    private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
     public void startUp() {
         eventBus.register(this);
 
-        collectionLogChatCommandsManager.startUp();
+        CollectionDatabase.init();
+
+        if (templeOSRSPlugin.getConfig().enableClogChatCommand()) {
+            collectionLogChatCommandChatMessageSubscriber.startUp();
+        }
 
         if (templeOSRSPlugin.getConfig().autoSyncClog()) {
             collectionLogAutoSyncManager.startUp();
@@ -159,7 +157,9 @@ public class CollectionLogManager {
     public void shutDown() {
         eventBus.unregister(this);
 
-        collectionLogChatCommandsManager.shutDown();
+        if (templeOSRSPlugin.getConfig().enableClogChatCommand()) {
+            collectionLogChatCommandChatMessageSubscriber.shutDown();
+        }
 
         if (templeOSRSPlugin.getConfig().autoSyncClog()) {
             collectionLogAutoSyncManager.shutDown();
@@ -201,6 +201,7 @@ public class CollectionLogManager {
     @Subscribe
     public void onGameStateChanged(GameStateChanged gameStateChanged) {
         GameState state = gameStateChanged.getGameState();
+
         switch (state) {
             // When hopping, we need to clear any state related to the player
             case HOPPING:
@@ -209,6 +210,26 @@ public class CollectionLogManager {
                 clogItemsBitSet.clear();
                 clogItemsCountSet.clear();
                 break;
+            case LOGGED_IN: {
+                // Attempt to synchronise the player's collection log on login
+                clientThread.invokeLater(() -> {
+                    final String username = client.getLocalPlayer().getName();
+
+                    // Wait for username to be available
+                    if (username == null) {
+                        return false;
+                    }
+
+                    // Skip sync if the player's collection log has already been saved and is up-to-date
+                    if (collectionLogService.isDataFresh(username.toLowerCase()) && CollectionDatabase.hasPlayerData(username.toLowerCase())) {
+                        return true;
+                    }
+
+                    collectionLogService.syncCollectionLog();
+
+                    return true;
+                });
+            }
         }
     }
 

@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections.chatcommands.db;
+package com.templeosrs.util.collections.database;
 
 import com.templeosrs.util.collections.data.CollectionItem;
 import com.templeosrs.util.collections.data.CollectionResponse;

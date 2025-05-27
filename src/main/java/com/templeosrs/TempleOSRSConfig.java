@@ -277,6 +277,16 @@ public interface TempleOSRSConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(
+			keyName = "enableClogChatCommand",
+			name = "Enable !col chat command",
+			description = "When enabled, the plugin will detect any !col chat messages and replace the contents with " +
+					"TempleOSRS log data, if available",
+			position = 4,
+			section = clogOptions
+	)
+	default boolean enableClogChatCommand() { return true; }
+
 	@Range(min = 50, max = 200)
 	@ConfigItem(
 			keyName = "maxCachedPlayers",

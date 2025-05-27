@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections.chatcommands.utils;
+package com.templeosrs.util.collections.utils;
 
 import com.templeosrs.util.collections.CollectionLogCategory;
 

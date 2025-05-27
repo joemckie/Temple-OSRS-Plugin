@@ -19,7 +19,8 @@ import javax.inject.Inject;
 import java.util.Set;
 
 @Slf4j
-public class CollectionLogAutoSyncConfigChecker {
+public class CollectionLogAutoSyncConfigChecker
+{
     @Inject
     private Client client;
 
@@ -45,7 +46,7 @@ public class CollectionLogAutoSyncConfigChecker {
      */
     private static final Set<Integer> enabledCollectionLogNotificationSettingValues = Set.of(1, 3);
 
-    void startUp()
+    public void startUp()
     {
         if (client.getGameState() == GameState.LOGGED_IN) {
             collectionLogManager.getClientThread().invoke(() -> {

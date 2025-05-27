@@ -3,19 +3,17 @@ package com.templeosrs.util.collections.chatcommands;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogCategory;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.chatcommands.db.CollectionDatabase;
-import com.templeosrs.util.collections.chatcommands.parser.CollectionParser;
-import com.templeosrs.util.collections.chatcommands.utils.CollectionLogCategoryUtils;
-import com.templeosrs.util.collections.chatcommands.utils.PlayerNameUtils;
 import com.templeosrs.util.collections.data.CollectionItem;
+import com.templeosrs.util.collections.database.CollectionDatabase;
+import com.templeosrs.util.collections.parser.CollectionParser;
+import com.templeosrs.util.collections.services.CollectionLogService;
+import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
+import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.IndexedSprite;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.GameStateChanged;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.EventBus;
@@ -27,38 +25,37 @@ import net.runelite.client.util.ImageUtil;
 import javax.inject.Inject;
 import javax.swing.*;
 import java.awt.image.BufferedImage;
-import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
-public class CollectionLogChatCommandsManager {
-    @Inject
-    private EventBus eventBus;
-
+public class CollectionLogChatCommandChatMessageSubscriber {
     @Inject
     private Client client;
-
-    @Inject
-    private TempleOSRSPlugin templeOSRSPlugin;
 
     @Inject
     private ChatMessageManager chatMessageManager;
 
     @Inject
-    private ItemManager itemManager;
+    private ScheduledExecutorService scheduledExecutorService;
 
     @Inject
     private CollectionLogRequestManager collectionLogRequestManager;
 
     @Inject
-    private ScheduledExecutorService scheduledExecutorService;
-
-    @Inject
-    private ClientThread clientThread;
+    private TempleOSRSPlugin templeOSRSPlugin;
 
     @Inject
     private CollectionParser collectionParser;
+
+    @Inject
+    private ItemManager itemManager;
+
+    @Inject
+    private CollectionLogService collectionLogService;
+
+    @Inject
+    private EventBus eventBus;
 
     private final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
 
@@ -67,8 +64,6 @@ public class CollectionLogChatCommandsManager {
     public void startUp()
     {
         eventBus.register(this);
-
-        CollectionDatabase.init();
     }
 
     public void shutDown()
@@ -78,71 +73,6 @@ public class CollectionLogChatCommandsManager {
         // 🧼 Clear cached icons and IDs to prevent memory buildup
         itemIconIndexes.clear();
         loadedItemIds.clear();
-    }
-
-    private void syncCollectionLog() {
-        scheduledExecutorService.execute(() -> {
-            log.debug("🔄 Starting syncCollectionLog()...");
-
-            CollectionDatabase.clearAll();
-
-            if (client.getLocalPlayer() == null) {
-                log.warn("⚠️ Local player is null — not logged in yet.");
-                return;
-            }
-
-            String username = Objects.requireNonNull(client.getLocalPlayer().getName()).toLowerCase();
-            log.debug("👤 Detected username: {}", username);
-
-            String json = collectionLogRequestManager.getPlayerCollectionLog(username);
-
-            log.debug("📥 Fetched JSON: {} characters", json != null ? json.length() : 0);
-
-            if (json == null || json.isEmpty()) {
-                log.error("❌ Empty or null response from Temple API");
-                return;
-            }
-
-            log.debug("🧩 Parsing and storing JSON...");
-
-            collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(username), json);
-
-            log.debug("✅ Parsing complete.");
-        });
-    }
-
-    private boolean isDataOutdated(String username)
-    {
-        String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(username);
-        Timestamp dbTimestamp = CollectionDatabase.getLatestTimestamp(username);
-        Timestamp apiTimestamp = lastChanged != null ? Timestamp.valueOf(lastChanged) : null;
-
-        log.debug("🕒 [Compare] {} | DB: {} | API: {}", username, dbTimestamp, apiTimestamp);
-
-        return dbTimestamp == null || dbTimestamp.before(apiTimestamp);
-    }
-
-    @Subscribe
-    public void onGameStateChanged(GameStateChanged gameStateChanged) {
-        if (gameStateChanged.getGameState() == GameState.LOGGED_IN) {
-            clientThread.invokeLater(() -> {
-                final String username = client.getLocalPlayer().getName();
-
-                // Wait for username to be available
-                if (username == null) {
-                    return false;
-                }
-
-                // Skip sync if the player's collection log has already been saved
-                if (!isDataOutdated(username.toLowerCase()) && CollectionDatabase.hasPlayerData(username.toLowerCase())) {
-                    return true;
-                }
-
-                syncCollectionLog();
-
-                return true;
-            });
-        }
     }
 
     @Subscribe
@@ -162,8 +92,10 @@ public class CollectionLogChatCommandsManager {
             return;
         }
 
+        final String COLLECTION_LOG_CHAT_TRIGGER = "!col ";
+
         // Command must start with "!col "
-        if (!rawMessage.toLowerCase().startsWith("!col "))
+        if (!rawMessage.toLowerCase().startsWith(COLLECTION_LOG_CHAT_TRIGGER))
         {
             return;
         }
@@ -184,7 +116,7 @@ public class CollectionLogChatCommandsManager {
         } catch (IllegalArgumentException e) {
             log.warn("❌ No alias or category found for {}", bossInput);
 
-            final String finalMessage = "\"" + bossInput + "\" is not a valid collection log category or alias";
+            final String finalMessage = "\"" + bossInput + "\" is not a valid collection log category or alias!";
 
             chatMessageManager.queue(
                     QueuedMessage.builder()
@@ -206,9 +138,9 @@ public class CollectionLogChatCommandsManager {
 
         scheduledExecutorService.execute(() ->
         {
-            final boolean isDataOutdated = isDataOutdated(normalizedPlayerName);
+            final boolean isDataStale = !collectionLogService.isDataFresh(normalizedPlayerName);
             final boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
-            final boolean shouldUpdate = !hasLocalData || isDataOutdated;
+            final boolean shouldUpdate = !hasLocalData || isDataStale;
 
             if (shouldUpdate)
             {

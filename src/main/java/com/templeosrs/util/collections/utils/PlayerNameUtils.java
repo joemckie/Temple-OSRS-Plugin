@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections.chatcommands.utils;
+package com.templeosrs.util.collections.utils;
 
 public class PlayerNameUtils {
     // Normalize player name by removing Ironman prefixes and formatting

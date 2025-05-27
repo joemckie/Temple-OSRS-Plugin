@@ -1,4 +1,4 @@
-package com.templeosrs.util.collections.chatcommands.parser;
+package com.templeosrs.util.collections.parser;
 
 import com.google.gson.*;
 import java.sql.Connection;
@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
 
-import com.templeosrs.util.collections.chatcommands.db.CollectionDatabase;
+import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.data.CollectionResponse;
 import lombok.extern.slf4j.Slf4j;
 

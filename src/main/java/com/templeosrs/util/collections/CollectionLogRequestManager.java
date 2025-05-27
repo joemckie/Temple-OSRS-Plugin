@@ -76,6 +76,7 @@ public class CollectionLogRequestManager extends RequestManager {
      * Retrieves the time the user's collection log last changed from the Player Info endpoint
      *
      * @param username The username to check
+     * @link <a href="https://templeosrs.com/api_doc.php#Player_Information">Player Info API</a>
      */
     public String getLastChangedTimestamp(String username) {
         final HttpUrl url = new HttpUrl.Builder()
@@ -116,6 +117,12 @@ public class CollectionLogRequestManager extends RequestManager {
         return null;
     }
 
+    /**
+     * Retrieves the given player's full collection log
+     * @param username The username to query
+     * @return The collection log data
+     * @link <a href="https://templeosrs.com/api_doc.php#Player_Collection_Log">Player Collection Log API</a>
+     */
     public String getPlayerCollectionLog(String username)
     {
         final HttpUrl url = new HttpUrl.Builder()
