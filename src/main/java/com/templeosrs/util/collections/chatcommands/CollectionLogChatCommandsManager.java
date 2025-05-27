@@ -5,7 +5,7 @@ import com.templeosrs.util.collections.CollectionLogCategory;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.chatcommands.db.CollectionDatabase;
 import com.templeosrs.util.collections.chatcommands.parser.CollectionParser;
-import com.templeosrs.util.collections.chatcommands.utils.CategoryAliases;
+import com.templeosrs.util.collections.chatcommands.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.chatcommands.utils.PlayerNameUtils;
 import com.templeosrs.util.collections.data.CollectionItem;
 import lombok.extern.slf4j.Slf4j;
@@ -161,12 +161,12 @@ public class CollectionLogChatCommandsManager {
 
         // Normalize boss name
         String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
-        final boolean isAliasFound = CategoryAliases.CATEGORY_ALIASES.containsKey(bossInput);
+        final boolean isAliasFound = CollectionLogCategoryUtils.CATEGORY_ALIASES.containsKey(bossInput);
         CollectionLogCategory bossKey;
 
         try {
             bossKey = isAliasFound
-                    ? CategoryAliases.CATEGORY_ALIASES.get(bossInput)
+                    ? CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput)
                     : CollectionLogCategory.valueOf(bossInput);
         } catch (IllegalArgumentException e) {
             log.warn("❌ No alias or category found for {}", bossInput);
@@ -182,7 +182,6 @@ public class CollectionLogChatCommandsManager {
 
             return;
         }
-
 
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
@@ -247,22 +246,26 @@ public class CollectionLogChatCommandsManager {
 
             StringBuilder sb = new StringBuilder();
 
+            String categoryName = CollectionLogCategoryUtils.CATEGORY_TITLE_OVERRIDES.getOrDefault(
+                    bossKey,
+                    toTitleCase(bossKey.toString().replace("_", " "))
+            );
+
             // If sender's name is same as the player being queried, omit the player's name
             if (!event.getName().equalsIgnoreCase(playerName)) {
-                sb.append("<col=ffffaa>")
+                sb
+                        .append("<col=ffffaa>")
                         .append(playerName)  // Append the original player name here
-                        .append("'s ");
+                        .append("'s ")
+                        .append(categoryName).append(": ")
+                        .append("</col>");
+            } else {
+                sb.append(categoryName).append(": ");
             }
 
-            sb.append(toTitleCase(bossKey.toString().replace('_', ' ')))
-                    .append("</col>");
-
-            if (items.isEmpty())
-            {
-                sb.append(" No data found.");
-            }
-            else
-            {
+            if (items.isEmpty()) {
+                sb.append("No data found.");
+            } else {
                 Map<Integer, CollectionItem> merged = new HashMap<>();
                 for (CollectionItem item : items)
                 {
@@ -297,14 +300,21 @@ public class CollectionLogChatCommandsManager {
     private String toTitleCase(String input) {
         if (input == null || input.isEmpty()) return input;
 
+        Set<String> connectingWords = Set.of("and", "the", "of");
         String[] words = input.toLowerCase().split(" ");
         StringBuilder titleCase = new StringBuilder();
 
         for (String word : words) {
             if (!word.isEmpty()) {
-                titleCase.append(Character.toUpperCase(word.charAt(0)))
-                        .append(word.substring(1))
-                        .append(" ");
+                if (connectingWords.contains(word)) {
+                    titleCase.append(word);
+                } else {
+                    titleCase
+                            .append(Character.toUpperCase(word.charAt(0)))
+                            .append(word.substring(1));
+                }
+
+                titleCase.append(" ");
             }
         }
 

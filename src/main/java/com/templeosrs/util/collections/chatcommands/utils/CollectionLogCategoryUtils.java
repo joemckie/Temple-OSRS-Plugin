@@ -4,7 +4,7 @@ import com.templeosrs.util.collections.CollectionLogCategory;
 
 import java.util.Map;
 
-public class CategoryAliases {
+public class CollectionLogCategoryUtils {
     public static final Map<String, CollectionLogCategory> CATEGORY_ALIASES = Map.<String, CollectionLogCategory>ofEntries(
             // === Bosses ===
             Map.entry("armadyl", CollectionLogCategory.kree_arra),
@@ -155,5 +155,16 @@ public class CategoryAliases {
             Map.entry("tombs", CollectionLogCategory.tombs_of_amascut),
             Map.entry("tob", CollectionLogCategory.theatre_of_blood),
             Map.entry("theatre", CollectionLogCategory.theatre_of_blood)
+    );
+
+    public static Map<CollectionLogCategory, String> CATEGORY_TITLE_OVERRIDES = Map.ofEntries(
+            Map.entry(CollectionLogCategory.kree_arra, "Kree'arra"),
+            Map.entry(CollectionLogCategory.vetion_and_calvarion, "Vet'ion and Calvar'ion"),
+            Map.entry(CollectionLogCategory.kril_tsutsaroth, "K'ril Tsutsaroth"),
+            Map.entry(CollectionLogCategory.giants_foundry, "Giants' Foundry"),
+            Map.entry(CollectionLogCategory.rogues_den, "Rogues' Den"),
+            Map.entry(CollectionLogCategory.shades_of_mortton, "Shades of Mort'ton"),
+            Map.entry(CollectionLogCategory.champions_challenge, "Champions' Challenge"),
+            Map.entry(CollectionLogCategory.gloughs_experiments, "Glough's Experiments")
     );
 }
