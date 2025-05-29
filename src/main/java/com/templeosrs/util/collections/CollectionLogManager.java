@@ -24,6 +24,8 @@
  */
 package com.templeosrs.util.collections;
 
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
 import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
@@ -37,6 +39,7 @@ import com.templeosrs.util.collections.data.PlayerProfile;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
@@ -45,6 +48,8 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.ItemVariationMapping;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -123,6 +128,10 @@ public class CollectionLogManager {
 
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
+
+    @Getter
+    @Setter
+    private boolean syncAllowed;
 
     public void startUp() {
         eventBus.register(this);
@@ -221,7 +230,7 @@ public class CollectionLogManager {
                     }
 
                     // Skip sync if the player's collection log has already been saved and is up-to-date
-                    if (collectionLogService.isDataFresh(username.toLowerCase()) && CollectionDatabase.hasPlayerData(username.toLowerCase())) {
+                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
                         return true;
                     }
 
@@ -255,7 +264,7 @@ public class CollectionLogManager {
      */
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
-        if (syncButtonManager.isSyncAllowed() && preFired.getScriptId() == 4100) {
+        if (isSyncAllowed() && preFired.getScriptId() == 4100) {
             tickCollectionLogScriptFired = client.getTickCount();
             if (collectionLogItemIdToBitsetIndex.isEmpty()) {
                 return;
@@ -275,7 +284,7 @@ public class CollectionLogManager {
 
     synchronized public void submitTask() {
         // If sync hasn't been toggled to be allowed
-        if (!syncButtonManager.isSyncAllowed()) {
+        if (!isSyncAllowed()) {
             return;
         }
 
@@ -285,40 +294,65 @@ public class CollectionLogManager {
         }
 
         if (manifest == null || client.getLocalPlayer() == null) {
-//			log.debug("Skipped due to bad manifest: {}", manifest);
+			log.debug("Skipped due to bad manifest: {}", manifest);
+
             return;
         }
 
         String username = client.getLocalPlayer().getName();
-        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
-        PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-        PlayerData newPlayerData = getPlayerData();
-        PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
-
-
-        // Uncomment below WikiSync code if we ever want to disable sync requests with no item changes
-        // For now item counts might still change even if no new items were obtained - might be worth looking into returning here if not even item count changes
-
-        // Subtraction is done in place so newPlayerData becomes a map of only changed fields
-/*
-        subtract(newPlayerData, oldPlayerData);
-
-        if (newPlayerData.isEmpty()) {
-            return;
-        }*/
-
-        // Do not send if slot data wasn't generated
-        if (newPlayerData.collectionLogSlots.isEmpty()) {
+        if (username == null) {
             return;
         }
 
-        submitPlayerData(profileKey, newPlayerData, oldPlayerData);
-    }
+        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
+        PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-    public void manifestTask() {
-        if (client.getGameState() == GameState.LOGGED_IN) {
-            checkManifest();
+        final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
+
+        // If no player data exists, this is the first sync, so send everything.
+        if (!hasPlayerData) {
+            PlayerData newPlayerData = getPlayerData();
+            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
+
+            // Do not send if slot data wasn't generated
+            if (newPlayerData.collectionLogSlots.isEmpty()) {
+                return;
+            }
+
+            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
+
+            return;
+        }
+
+        if (!templeOSRSPlugin.getConfig().autoSyncClog()) {
+            return;
+        }
+
+        // If player data exists and auto-sync is enabled, check to see if any items have changed that require a sync
+        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+
+        for (Map.Entry<Integer, Integer> entry : collectionLogItemIdToBitsetIndex.entrySet())
+        {
+            final int itemId = entry.getKey();
+            final int bitsetIndex = entry.getValue();
+            final int itemCount = clogItemsCountSet.getOrDefault(bitsetIndex, 0);
+
+            if (itemCount > 0) {
+                collectionLogItemIdCountMap.add(itemId, itemCount);
+            }
+        }
+
+        collectionLogItemIdCountMap.add(ItemID.ABYSSAL_WHIP, 100);
+
+        final Multiset<Integer> itemDiff = CollectionDatabase.findUpdatedItems(username, collectionLogItemIdCountMap);
+
+        if (itemDiff == null) {
+            return;
+        }
+
+        if (!itemDiff.isEmpty()) {
+            log.debug("item diff: {}", itemDiff);
         }
     }
 
@@ -330,11 +364,6 @@ public class CollectionLogManager {
         out.collectionLogItemCount = collectionLogItemIdsFromCache.size();
 
         return out;
-    }
-
-    private void subtract(PlayerData newPlayerData, PlayerData oldPlayerData) {
-        if (newPlayerData.collectionLogSlots.equals(oldPlayerData.collectionLogSlots))
-            newPlayerData.clearCollectionLog();
     }
 
     private void merge(PlayerData oldPlayerData, PlayerData delta) {
@@ -360,14 +389,14 @@ public class CollectionLogManager {
         requestManager.uploadFullCollectionLog(submission, new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
-//				log.debug("Failed to submit: ", e);
+				log.debug("Failed to submit: ", e);
             }
 
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) {
                 try {
                     if (!response.isSuccessful()) {
-//						log.debug("Failed to submit: {}", response.code());
+						log.debug("Failed to submit: {}", response.code());
                         return;
                     }
                     merge(old, delta);
@@ -470,19 +499,5 @@ public class CollectionLogManager {
             itemIds.add(goodItemId);
 
         return itemIds;
-    }
-
-
-    private int getVarbitValue(int varbitId) {
-        VarbitComposition v = varbitCompositions.get(varbitId);
-        if (v == null) {
-            return -1;
-        }
-
-        int value = client.getVarpValue(v.getIndex());
-        int lsb = v.getLeastSignificantBit();
-        int msb = v.getMostSignificantBit();
-        int mask = (1 << ((msb - lsb) + 1)) - 1;
-        return (value >> lsb) & mask;
     }
 }

@@ -76,27 +76,20 @@ public class SyncButtonManager {
     private static final int BUTTON_OFFSET = CLOSE_BUTTON_OFFSET + 5;
     private int lastAttemptedUpdate = -1;
 
-    private final Client client;
-    private final ClientThread clientThread;
-    private final EventBus eventBus;
-
-    @Getter
-    @Setter
-    private boolean syncAllowed;
+    @Inject
+    private Client client;
 
     @Inject
-    private SyncButtonManager(
-            Client client,
-            ClientThread clientThread,
-            EventBus eventBus
-    ) {
-        this.client = client;
-        this.clientThread = clientThread;
-        this.eventBus = eventBus;
-    }
+    private ClientThread clientThread;
+
+    @Inject
+    private EventBus eventBus;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     public void startUp() {
-        setSyncAllowed(false);
+        collectionLogManager.setSyncAllowed(false);
         eventBus.register(this);
         clientThread.invokeLater(() -> tryAddButton(this::onButtonClick));
     }
@@ -144,7 +137,7 @@ public class SyncButtonManager {
         }
         lastAttemptedUpdate = client.getTickCount();
 
-        setSyncAllowed(true);
+        collectionLogManager.setSyncAllowed(true);
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
         client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Your collection log data is being sent to TempleOSRS...", "TempleOSRS");

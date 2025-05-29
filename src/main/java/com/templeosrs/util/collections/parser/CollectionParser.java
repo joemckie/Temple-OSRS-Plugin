@@ -98,7 +98,7 @@ public class CollectionParser {
                 }
 
                 // ✅ Perform batch insert for the whole category with player name
-                CollectionDatabase.insertItemsBatch(username.toLowerCase(), categoryName, entryList);
+                CollectionDatabase.insertItemsBatch(username, categoryName, entryList);
             }
 
             log.debug("✅ Parsed {} categories and inserted {} items total for {}.", categoryCount, itemCount, username);

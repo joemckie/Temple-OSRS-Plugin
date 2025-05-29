@@ -8,4 +8,5 @@ import lombok.Data;
 public class ObtainedItem {
     String name;
     int id;
+    int count;
 }

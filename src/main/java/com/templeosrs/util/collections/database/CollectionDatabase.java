@@ -1,21 +1,26 @@
 package com.templeosrs.util.collections.database;
 
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
+import com.google.common.collect.Multisets;
 import com.templeosrs.util.collections.data.CollectionItem;
 import com.templeosrs.util.collections.data.CollectionResponse;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
+import net.runelite.client.game.ItemVariationMapping;
 
+import javax.inject.Singleton;
 import java.io.File;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Slf4j
+@Singleton
 public class CollectionDatabase {
-    private static final String DB_URL = "jdbc:h2:file:" + RuneLite.RUNELITE_DIR + "/collection-tracker/runelite-collections;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1";
+    private static final String DB_URL = "jdbc:h2:file:" + RuneLite.RUNELITE_DIR + "/templeosrs/runelite-collections;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1";
 
     static {
-        File pluginDir = new File(RuneLite.RUNELITE_DIR, "collection-tracker");
+        File pluginDir = new File(RuneLite.RUNELITE_DIR, "templeosrs");
         if (!pluginDir.exists()) {
             if (!pluginDir.mkdirs()) {
                 log.warn("⚠️ Failed to create plugin directory at {}", pluginDir.getAbsolutePath());
@@ -71,7 +76,7 @@ public class CollectionDatabase {
     public static boolean hasPlayerData(String playerName) {
         String sql = "SELECT 1 FROM collection_log WHERE player_name = ? LIMIT 1";
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, playerName);
+            ps.setString(1, playerName.toLowerCase());
             ResultSet rs = ps.executeQuery();
             return rs.next();
         } catch (SQLException e) {
@@ -86,7 +91,7 @@ public class CollectionDatabase {
             try (PreparedStatement ps = conn.prepareStatement(
                     "INSERT INTO collection_log (player_name, category, item_id, item_name, item_count, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
                 for (CollectionResponse.ItemEntry item : items) {
-                    ps.setString(1, playerName);
+                    ps.setString(1, playerName.toLowerCase());
                     ps.setString(2, category);
                     ps.setInt(3, item.id);
                     ps.setString(4, item.name);
@@ -100,6 +105,53 @@ public class CollectionDatabase {
             conn.commit();
         } catch (SQLException e) {
             log.warn("Error inserting items batch: {}", e.getMessage());
+        }
+    }
+
+    public static Multiset<Integer> findUpdatedItems(String playerName, Multiset<Integer> collectionLogItems)
+    {
+        try (Connection conn = getConnection())
+        {
+            try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT item_count, item_id FROM collection_log WHERE player_name = ? AND item_id = ? OR item_id = ? LIMIT 1")) {
+
+                final Multiset<Integer> foundItems = HashMultiset.create();
+
+                for (Multiset.Entry<Integer> entry : collectionLogItems.entrySet())
+                {
+                    final int itemId = entry.getElement();
+                    final int baseItemId = ItemVariationMapping.map(itemId);
+
+                    if (foundItems.contains(baseItemId)) {
+                        foundItems.add(itemId, collectionLogItems.count(itemId));
+
+                        continue;
+                    }
+
+                    ps.setString(1, playerName.toLowerCase());
+                    ps.setInt(2, itemId);
+                    ps.setInt(3, baseItemId);
+
+                    final ResultSet rs = ps.executeQuery();
+
+                    if (rs.next()) {
+                        final int rsItemCount = rs.getInt("item_count");
+                        final int rsItemId = rs.getInt("item_id");
+
+                        foundItems.add(rsItemId, rsItemCount);
+
+                        if (rsItemId != itemId) {
+                            foundItems.add(itemId, rsItemCount);
+                        }
+                    }
+                }
+
+                return Multisets.difference(collectionLogItems, foundItems);
+            }
+        } catch (SQLException e) {
+            log.warn("Error comparing collection log: {}", e.getMessage());
+
+            return null;
         }
     }
 
@@ -164,7 +216,7 @@ public class CollectionDatabase {
                      "DELETE FROM collection_log WHERE player_name = ?"
              )
         ) {
-            ps1.setString(1, yourUsername);
+            ps1.setString(1, yourUsername.toLowerCase());
             ResultSet rs = ps1.executeQuery();
 
             int count = 0;

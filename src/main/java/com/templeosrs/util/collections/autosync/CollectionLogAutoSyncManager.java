@@ -1,13 +1,20 @@
 package com.templeosrs.util.collections.autosync;
 
-import com.google.gson.Gson;
+import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.MenuAction;
+import net.runelite.api.events.ScriptPostFired;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import okhttp3.*;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +26,7 @@ import java.util.HashSet;
 
 @Slf4j
 public class CollectionLogAutoSyncManager {
-    
+
     @Inject
     private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
 
@@ -37,6 +44,9 @@ public class CollectionLogAutoSyncManager {
     
     @Inject
     private Client client;
+
+    @Inject
+    private ClientThread clientThread;
     
     @Inject
     private EventBus eventBus;
@@ -44,12 +54,19 @@ public class CollectionLogAutoSyncManager {
     @Inject
     private CollectionLogRequestManager requestManager;
 
+    @Inject
+    private CollectionLogManager collectionLogManager;
+
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
     
     @Getter
     @Nullable
     private Integer gameTickToSync;
+
+    @Getter
+    @Setter
+    private boolean triggerSyncAllowed;
 
     /**
      * Keeps track of what item IDs are pending a server sync
@@ -59,6 +76,7 @@ public class CollectionLogAutoSyncManager {
 
     public void startUp()
     {
+        eventBus.register(this);
         eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
         eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
         eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
@@ -70,6 +88,7 @@ public class CollectionLogAutoSyncManager {
 
     public void shutDown()
     {
+        eventBus.unregister(this);
         eventBus.unregister(collectionLogAutoSyncChatMessageSubscriber);
         eventBus.unregister(collectionLogAutoSyncItemContainerChangedSubscriber);
         eventBus.unregister(collectionLogAutoSyncNpcLootReceivedSubscriber);
@@ -78,7 +97,30 @@ public class CollectionLogAutoSyncManager {
 
         collectionLogAutoSyncConfigChecker.shutDown();
     }
-    
+
+    @Subscribe
+    public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+    {
+        if (widgetLoaded.getGroupId() == InterfaceID.COLLECTION) {
+            setTriggerSyncAllowed(true);
+        }
+    }
+
+    @Subscribe
+    public void onScriptPostFired(ScriptPostFired scriptPostFired) {
+        if (scriptPostFired.getScriptId() == 7797 && isTriggerSyncAllowed()) {
+            clientThread.invokeLater(() -> {
+                client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
+                client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Back", null);
+
+                setTriggerSyncAllowed(false);
+
+                collectionLogManager.setSyncAllowed(true);
+            });
+        }
+    }
+
+
     /**
      * Starts the sync countdown.
      * This utilises a 17-tick delay (which corresponds to a roughly 10-second wait) as a way to batch requests.
@@ -114,7 +156,7 @@ public class CollectionLogAutoSyncManager {
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
                 client.getAccountHash(),
-                pendingSyncItems.stream().map(item -> new ObtainedItem(item.getKey(), item.getValue())).toArray()
+                pendingSyncItems.stream().map(item -> new ObtainedItem(item.getKey(), item.getValue(), 0)).toArray()
         );
 
         requestManager.uploadObtainedCollectionLogItems(submission, new Callback() {
