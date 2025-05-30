@@ -48,8 +48,6 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.ItemVariationMapping;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -343,8 +341,6 @@ public class CollectionLogManager {
             }
         }
 
-        collectionLogItemIdCountMap.add(ItemID.ABYSSAL_WHIP, 100);
-
         final Multiset<Integer> itemDiff = CollectionDatabase.findUpdatedItems(username, collectionLogItemIdCountMap);
 
         if (itemDiff == null) {
@@ -452,9 +448,8 @@ public class CollectionLogManager {
             collectionLogItemIdToBitsetIndex.clear();
             for (Integer itemId : manifest.collections)
                 collectionLogItemIdToBitsetIndex.put(itemId, currentIndex++);
-            for (Integer missingItemId : itemIdsMissingFromManifest) {
+            for (Integer missingItemId : itemIdsMissingFromManifest)
                 collectionLogItemIdToBitsetIndex.put(missingItemId, currentIndex++);
-            }
         });
     }
 
@@ -486,6 +481,8 @@ public class CollectionLogManager {
                 // ex subtab enum: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
+
+                log.debug("subtabStructIndex: {} - clogitems: {}", subtabStructIndex, clogItems);
                 for (int clogItemId : clogItems) itemIds.add(clogItemId);
             }
         }
@@ -497,6 +494,8 @@ public class CollectionLogManager {
             itemIds.remove(badItemId);
         for (int goodItemId : replacements.getIntVals())
             itemIds.add(goodItemId);
+
+        log.debug("item ids: {}", itemIds);
 
         return itemIds;
     }

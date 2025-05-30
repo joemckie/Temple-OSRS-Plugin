@@ -113,8 +113,8 @@ public class CollectionDatabase {
         try (Connection conn = getConnection())
         {
             try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT item_count, item_id FROM collection_log WHERE player_name = ? AND item_id = ? OR item_id = ? LIMIT 1")) {
-
+                "SELECT item_count, item_id FROM collection_log WHERE player_name = ? AND item_id = ? OR item_id = ? LIMIT 1"))
+            {
                 final Multiset<Integer> foundItems = HashMultiset.create();
 
                 for (Multiset.Entry<Integer> entry : collectionLogItems.entrySet())
@@ -134,7 +134,8 @@ public class CollectionDatabase {
 
                     final ResultSet rs = ps.executeQuery();
 
-                    if (rs.next()) {
+                    if (rs.next())
+                    {
                         final int rsItemCount = rs.getInt("item_count");
                         final int rsItemId = rs.getInt("item_id");
 
@@ -166,12 +167,14 @@ public class CollectionDatabase {
         } catch (SQLException e) {
             log.warn("Error fetching latest timestamp: {}", e.getMessage());
         }
+
         return null;
     }
 
     public static void clearAll() {
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
+             Statement stmt = conn.createStatement())
+        {
             stmt.executeUpdate("DELETE FROM collection_log");
         } catch (SQLException e) {
             log.warn("Error clearing all items: {}", e.getMessage());
