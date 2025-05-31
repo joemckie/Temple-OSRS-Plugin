@@ -274,7 +274,7 @@ public class CollectionDatabase {
                     Timestamp date = rs.getTimestamp("collected_date");
 
                     ObtainedCollectionItem item = ObtainedCollectionItem.builder()
-                        .categoryId(categoryId)
+                        .category(categoryId)
                         .itemId(itemId)
                         .count(count)
                         .build();

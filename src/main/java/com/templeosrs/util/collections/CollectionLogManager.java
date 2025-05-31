@@ -184,13 +184,14 @@ public class CollectionLogManager {
     @Subscribe
     public void onGameTick(GameTick gameTick) {
         // Submit the collection log data two ticks after the first script prefires
-        if (tickCollectionLogScriptFired != -1 &&
-                tickCollectionLogScriptFired + 2 < client.getTickCount()) {
+        if (tickCollectionLogScriptFired != -1 && tickCollectionLogScriptFired + 2 < client.getTickCount()) {
             tickCollectionLogScriptFired = -1;
+
             if (manifest == null) {
                 client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Failed to sync collection log. Try restarting the TempleOSRS plugin.", "TempleOSRS");
                 return;
             }
+
             scheduledExecutorService.execute(this::submitTask);
         }
     }
@@ -218,9 +219,9 @@ public class CollectionLogManager {
                     }
 
                     // Skip sync if the player's collection log has already been saved and is up-to-date
-//                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
-//                        return true;
-//                    }
+                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
+                        return true;
+                    }
 
                     collectionLogService.syncCollectionLog();
 
@@ -250,7 +251,7 @@ public class CollectionLogManager {
 
             ObtainedCollectionItem item = ObtainedCollectionItem.builder()
                 .count(itemCount)
-                .categoryId(collectionLogItemMap.get(itemId).getCategoryId())
+                .category(collectionLogItemMap.get(itemId).getCategory())
                 .itemId(itemId)
                 .build();
 
@@ -290,11 +291,14 @@ public class CollectionLogManager {
             return;
         }
 
+        // If the local data is out of sync with the current collection log, update it
         if (!itemDiff.isEmpty()) {
             List<Map.Entry<Integer, ObtainedCollectionItem>> itemsToAdd = obtainedCollectionLogItems.entrySet()
                     .stream()
                     .filter(item -> itemDiff.contains(item.getKey()))
                     .collect(Collectors.toList());
+
+            collectionLogAutoSyncManager.resetSyncCountdown();
 
             // Save the current state of the player's collection log for future diffing
             CollectionDatabase.upsertPlayerCollectionLogItems(username, itemsToAdd);
@@ -304,19 +308,21 @@ public class CollectionLogManager {
         if (!isSyncAllowed()) {
             return;
         }
-//
-//        // If no player data exists, this is the first sync, so send everything.
-//        if (!hasPlayerData) {
-//            PlayerData newPlayerData = getPlayerData();
-//            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
-//
-//            // Do not send if slot data wasn't generated
-//            if (newPlayerData.collectionLogSlots.isEmpty()) {
-//                return;
-//            }
-//
-//            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
-//        }
+
+        final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
+
+        // If no API player data exists, this is the first sync, so send everything.
+        if (!hasPlayerData) {
+            PlayerData newPlayerData = getPlayerData();
+            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
+
+            // Do not send if slot data wasn't generated
+            if (newPlayerData.collectionLogSlots.isEmpty()) {
+                return;
+            }
+
+            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
+        }
     }
 
     private PlayerData getPlayerData() {
@@ -427,7 +433,7 @@ public class CollectionLogManager {
 
                 for (int clogItemId : clogItems) {
                     CollectionItem item = CollectionItem.builder()
-                        .categoryId(subtabStructIndex)
+                        .category(subtabStructIndex)
                         .itemId(clogItemId)
                         .build();
 
@@ -446,14 +452,12 @@ public class CollectionLogManager {
 
         for (int goodItemId : replacements.getIntVals()) {
             CollectionItem item = CollectionItem.builder()
-                .categoryId(0)
+                .category(0)
                 .itemId(goodItemId)
                 .build();
 
             items.put(goodItemId, item);
         }
-
-        log.debug("item ids: {}", items);
 
         return items;
     }

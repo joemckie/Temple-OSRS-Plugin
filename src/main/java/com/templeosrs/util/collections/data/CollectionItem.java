@@ -8,6 +8,6 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @SuperBuilder
 public class CollectionItem {
-    private int categoryId;
+    private int category;
     private int itemId;
 }
