@@ -111,21 +111,31 @@ public class CollectionDatabase {
      */
     public static void upsertPlayerCollectionLogItems(String playerName, List<Map.Entry<Integer, ObtainedCollectionItem>> items)
     {
-        log.debug("items to save: {}", items);
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
             try (PreparedStatement ps = conn.prepareStatement(
-                    String.format(
-                        "INSERT INTO %s (player_name, item_id, item_count) VALUES (?, ?, ?)",
-                        PLAYER_COLLECTION_LOG_TABLE
-                    )
+            String.format("MERGE INTO %s USING DUAL ", PLAYER_COLLECTION_LOG_TABLE) +
+                "ON item_id = ? AND player_name = ? " +
+                "WHEN MATCHED THEN UPDATE SET item_count = ? " +
+                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count) VALUES (?, ?, ?)"
             ))
             {
                 for (Map.Entry<Integer, ObtainedCollectionItem> item : items) {
-                    ps.setString(1, playerName.toLowerCase());
-                    ps.setInt(2, item.getValue().getItemId());
-                    ps.setInt(3, item.getValue().getCount());
+                    final ObtainedCollectionItem value = item.getValue();
+                    final int itemId = value.getItemId();
+                    final int itemCount = value.getCount();
+                    final String lowerPlayerName = playerName.toLowerCase();
+
+                    ps.setInt(1, itemId);
+                    ps.setInt(5, itemId);
+
+                    ps.setInt(3, itemCount);
+                    ps.setInt(6, itemCount);
+
+                    ps.setString(2, lowerPlayerName);
+                    ps.setString(4, lowerPlayerName);
+
                     ps.addBatch();
                 }
 

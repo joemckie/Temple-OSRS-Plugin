@@ -284,8 +284,6 @@ public class CollectionLogManager {
             collectionLogItemIdCountMap.add(itemId, itemCount);
         }
 
-        collectionLogItemIdCountMap.add(ItemID.ABYSSAL_WHIP, 100);
-
         final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
 
         if (itemDiff == null) {
