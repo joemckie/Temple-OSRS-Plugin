@@ -1,7 +1,7 @@
 package com.templeosrs.util.collections.services;
 
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.data.CollectionResponse;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
@@ -13,6 +13,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
@@ -75,7 +76,7 @@ public class CollectionLogService {
             log.debug("🧩 Parsing and storing JSON...");
 
             final String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(username);
-            final Map<String, List<CollectionResponse.ItemEntry>> items = collectionParser.parse(
+            final Set<ObtainedCollectionItem> items = collectionParser.parse(
                     normalizedPlayerName,
                     json
             );

@@ -1,5 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
@@ -31,7 +32,7 @@ public class CollectionLogAutoSyncGameTickSubscriber
     public void onGameTick(GameTick gameTick)
     {
         final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
-        final HashSet<Pair<String, Integer>> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+        final HashSet<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
 
         // Note: There shouldn't be an instance of gameTickToSync
         // being non-null without items in the pendingSyncItems set.

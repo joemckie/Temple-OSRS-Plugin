@@ -3,6 +3,7 @@ package com.templeosrs.util.collections.autosync;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ItemContainerChanged;
@@ -52,9 +53,10 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
         inventoryDifference.entrySet().forEach(item -> {
             String itemName = itemManager.getItemComposition(item.getElement()).getName();
             int itemId = item.getElement();
+            int itemCount = item.getCount();
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
-                collectionLogAutoSyncManager.pendingSyncItems.add(Pair.of(itemName, itemId));
+                collectionLogAutoSyncManager.pendingSyncItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount, null));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 
                 isNewCollectionLogFound.set(true);

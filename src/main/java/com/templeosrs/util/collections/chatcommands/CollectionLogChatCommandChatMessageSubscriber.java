@@ -3,7 +3,6 @@ package com.templeosrs.util.collections.chatcommands;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogCategory;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.data.CollectionItem;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
@@ -210,10 +209,10 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 Map<Integer, ObtainedCollectionItem> merged = new HashMap<>();
                 for (ObtainedCollectionItem item : items)
                 {
-                    merged.compute(item.getItemId(), (id, existing) ->
+                    merged.compute(item.getId(), (id, existing) ->
                     {
                         if (existing == null) return item;
-                        existing.setCount(existing.getCount() + item.getCount());
+//                        existing.setCount(existing.getCount() + item.getCount());
                         return existing;
                     });
                 }
@@ -221,7 +220,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 int i = 0;
                 for (ObtainedCollectionItem item : merged.values())
                 {
-                    Integer icon = itemIconIndexes.get(item.getItemId());
+                    Integer icon = itemIconIndexes.get(item.getId());
                     if (icon != null)
                     {
                         sb.append("<img=").append(icon).append("> ");
@@ -272,12 +271,12 @@ public class CollectionLogChatCommandChatMessageSubscriber {
      * @param items The item list for which to load item icons.
      */
     private void loadItemIcons(List<ObtainedCollectionItem> items) {
-        List<CollectionItem> newItems = new ArrayList<>();
+        List<ObtainedCollectionItem> newItems = new ArrayList<>();
 
-        for (CollectionItem item : items) {
-            if (!loadedItemIds.contains(item.getItemId())) {
+        for (ObtainedCollectionItem item : items) {
+            if (!loadedItemIds.contains(item.getId())) {
                 newItems.add(item);
-                loadedItemIds.add(item.getItemId());
+                loadedItemIds.add(item.getId());
             }
         }
 
@@ -292,11 +291,11 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         client.setModIcons(newModIcons);
 
         for (int i = 0; i < newItems.size(); i++) {
-            CollectionItem item = newItems.get(i);
+            ObtainedCollectionItem item = newItems.get(i);
             int modIconIndex = currentLength + i;
-            itemIconIndexes.put(item.getItemId(), modIconIndex);
+            itemIconIndexes.put(item.getId(), modIconIndex);
 
-            AsyncBufferedImage img = itemManager.getImage(item.getItemId());
+            AsyncBufferedImage img = itemManager.getImage(item.getId());
 
             img.onLoaded(() -> {
                 BufferedImage scaled = ImageUtil.resizeImage(img, 18, 16);

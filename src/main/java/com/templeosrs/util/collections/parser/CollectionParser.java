@@ -4,13 +4,10 @@ import com.google.gson.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
+import java.util.*;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
-import com.templeosrs.util.collections.data.CollectionResponse;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
@@ -28,7 +25,7 @@ public class CollectionParser {
      * @param json The raw JSON response from the Player Collection Log endpoint
      * @return A map of categories and their respective items, where the key is the API category (e.g. kree_arra).
      */
-    public Map<String, List<CollectionResponse.ItemEntry>> parse(String rawUsername, String json)
+    public Set<ObtainedCollectionItem> parse(String rawUsername, String json)
     {
         final String username = rawUsername.toLowerCase();
 
@@ -80,35 +77,20 @@ public class CollectionParser {
 
         // Handle success response
         if (rootObject.has("data")) {
-            Map<String, List<CollectionResponse.ItemEntry>> itemMap = new HashMap<>();
             JsonObject data = rootObject.getAsJsonObject("data");
-            JsonObject items = data.getAsJsonObject("items");
+            JsonArray itemArray = data.getAsJsonArray("items");
 
-            int categoryCount = 0;
-            int itemCount = 0;
+            Set<ObtainedCollectionItem> itemList = new HashSet<>();
 
-            for (Map.Entry<String, JsonElement> category : items.entrySet()) {
-                String categoryName = category.getKey();
-                JsonArray itemArray = category.getValue().getAsJsonArray();
-
-                log.debug("📦 Parsing category: {} ({} items)", categoryName, itemArray.size());
-                categoryCount++;
-
-                List<CollectionResponse.ItemEntry> entryList = new ArrayList<>();
-
-                for (JsonElement e : itemArray) {
-                    CollectionResponse.ItemEntry item = gson.fromJson(e, CollectionResponse.ItemEntry.class);
-                    log.debug("➡️ Queuing: [{}] {} x{} @ {}", categoryName, item.name, item.count, item.date);
-                    entryList.add(item);
-                    itemCount++;
-                }
-
-                itemMap.put(categoryName, entryList);
+            for (JsonElement e : itemArray) {
+                ObtainedCollectionItem item = gson.fromJson(e, ObtainedCollectionItem.class);
+                log.debug("➡️ Queuing: {} x{} @ {}", item.getName(), item.getCount(), item.getDate());
+                itemList.add(item);
             }
 
-            log.debug("✅ Parsed {} categories and {} items for {}.", categoryCount, itemCount, username);
+            log.debug("✅ Parsed {} items for {}.", itemList.size(), username);
 
-            return itemMap;
+            return itemList;
         }
 
         return null;
@@ -119,7 +101,7 @@ public class CollectionParser {
      * @param rawUsername The username associated with the collection log data
      * @param items The collection log item map to persist to the database, where the key is the API category
      */
-    public void store(String rawUsername, Map<String, List<CollectionResponse.ItemEntry>> items)
+    public void store(String rawUsername, Set<ObtainedCollectionItem> items)
     {
         final String username = rawUsername.toLowerCase();
 
@@ -130,15 +112,11 @@ public class CollectionParser {
 
         log.debug("🧹 Starting store() for user: {}...", username);
 
-        int categoryCount = items.size();
-        int itemCount = items.entrySet()
-                .stream()
-                .mapToInt(item -> items.size())
-                .sum();
+        int itemCount = items.size();
 
         CollectionDatabase.insertItemsBatch(username, items);
 
-        log.debug("✅ Parsed {} categories and inserted {} items total for {}.", categoryCount, itemCount, username);
+        log.debug("✅ Parsed and inserted {} items total for {}.", itemCount, username);
 
         // ✅ Manually shut down the database after insert
         try (Connection conn = CollectionDatabase.getConnection();
@@ -153,7 +131,7 @@ public class CollectionParser {
     /**
      * Combines the parse and store methods for ease of use.
      * @see #parse(String username, String json)
-     * @see #store(String username, Map collectionLogItems)
+     * @see #store(String username, Set collectionLogItems)
      */
     public void parseAndStore(String rawUsername, String json)
     {

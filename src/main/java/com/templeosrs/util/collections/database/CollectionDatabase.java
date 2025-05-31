@@ -44,6 +44,7 @@ public class CollectionDatabase {
                         "CREATE TABLE IF NOT EXISTS %s(" +
                                 "id IDENTITY PRIMARY KEY, " +
                                 "item_id INT, " +
+                                "item_name VARCHAR(255), " +
                                 "item_count INT, " +
                                 "player_name VARCHAR(255)" +
                         ")",
@@ -53,8 +54,8 @@ public class CollectionDatabase {
                 final String createApiCacheTableSql = String.format(
                         "CREATE TABLE IF NOT EXISTS %s(" +
                                 "id IDENTITY PRIMARY KEY, " +
-                                "category_name VARCHAR(255), " +
                                 "item_id INT, " +
+                                "item_name VARCHAR(255), " +
                                 "item_count INT, " +
                                 "player_name VARCHAR(255), " +
                                 "collected_date TIMESTAMP, " +
@@ -90,6 +91,7 @@ public class CollectionDatabase {
 
     public static boolean hasPlayerData(String playerName) {
         String sql = String.format("SELECT 1 FROM %s WHERE player_name = ? LIMIT 1", API_CACHE_TABLE_NAME);
+
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerName.toLowerCase());
             ResultSet rs = ps.executeQuery();
@@ -110,7 +112,7 @@ public class CollectionDatabase {
      * @param items The item set to persist to the database.
      */
     // TODO: Delete items that are no longer in the collection log (in cases of rollbacks)
-    public static void upsertPlayerCollectionLogItems(String playerName, List<Map.Entry<Integer, ObtainedCollectionItem>> items)
+    public static void upsertPlayerCollectionLogItems(String playerName, List<ObtainedCollectionItem> items)
     {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
@@ -119,13 +121,12 @@ public class CollectionDatabase {
             String.format("MERGE INTO %s USING DUAL ", PLAYER_COLLECTION_LOG_TABLE) +
                 "ON item_id = ? AND player_name = ? " +
                 "WHEN MATCHED THEN UPDATE SET item_count = ? " +
-                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count) VALUES (?, ?, ?)"
+                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count, item_name) VALUES (?, ?, ?, ?)"
             ))
             {
-                for (Map.Entry<Integer, ObtainedCollectionItem> item : items) {
-                    final ObtainedCollectionItem value = item.getValue();
-                    final int itemId = value.getItemId();
-                    final int itemCount = value.getCount();
+                for (ObtainedCollectionItem item : items) {
+                    final int itemId = item.getId();
+                    final int itemCount = item.getCount();
                     final String lowerPlayerName = playerName.toLowerCase();
 
                     ps.setInt(1, itemId);
@@ -136,6 +137,8 @@ public class CollectionDatabase {
 
                     ps.setString(2, lowerPlayerName);
                     ps.setString(4, lowerPlayerName);
+
+                    ps.setString(7, item.getName());
 
                     ps.addBatch();
                 }
@@ -154,30 +157,25 @@ public class CollectionDatabase {
      * @param playerName The player name associated with the response
      * @param items The items to persist to the database
      */
-    public static void insertItemsBatch(String playerName, Map<String, List<CollectionResponse.ItemEntry>> items) {
+    public static void insertItemsBatch(String playerName, Set<ObtainedCollectionItem> items) {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
             try (PreparedStatement ps = conn.prepareStatement(
                 String.format(
-                    "INSERT INTO %s (player_name, category_name, item_id, item_count, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO %s (player_name, item_id, item_count, item_name, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)",
                     API_CACHE_TABLE_NAME
                 )
             ))
             {
-                for (Map.Entry<String, List<CollectionResponse.ItemEntry>> entry : items.entrySet())
-                {
-                    final String categoryName = entry.getKey();
-
-                    for (CollectionResponse.ItemEntry item : entry.getValue()) {
-                        ps.setString(1, playerName.toLowerCase());
-                        ps.setString(2, categoryName);
-                        ps.setInt(3, item.id);
-                        ps.setInt(4, item.count);
-                        ps.setTimestamp(5, Timestamp.valueOf(item.date));
-                        ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
-                        ps.addBatch();
-                    }
+                for (ObtainedCollectionItem item : items) {
+                    ps.setString(1, playerName.toLowerCase());
+                    ps.setInt(2, item.getId());
+                    ps.setInt(3, item.getCount());
+                    ps.setString(4, item.getName());
+                    ps.setTimestamp(5, item.getDate());
+                    ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
+                    ps.addBatch();
                 }
 
                 ps.executeBatch();
@@ -260,7 +258,7 @@ public class CollectionDatabase {
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                  String.format(
-                     "SELECT item_id, item_count, collected_date FROM %s WHERE category = ? AND player_name = ?",
+                     "SELECT item_id, item_name, item_count, collected_date FROM %s WHERE category = ? AND player_name = ?",
                      API_CACHE_TABLE_NAME
                  )
         ))
@@ -270,16 +268,11 @@ public class CollectionDatabase {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     int itemId = rs.getInt("item_id");
+                    String itemName = rs.getString("item_name");
                     int count = rs.getInt("item_count");
                     Timestamp date = rs.getTimestamp("collected_date");
 
-                    ObtainedCollectionItem item = ObtainedCollectionItem.builder()
-                        .category(categoryId)
-                        .itemId(itemId)
-                        .count(count)
-                        .build();
-
-                    items.add(item);
+                    items.add(new ObtainedCollectionItem(itemId, itemName, count, date.toString()));
                 }
             }
         } catch (SQLException e) {
@@ -292,14 +285,11 @@ public class CollectionDatabase {
     public static void pruneOldPlayers(String yourUsername, int maxPlayers) {
         try (Connection conn = getConnection();
              PreparedStatement ps1 = conn.prepareStatement(
-                 String.format(
-                         "SELECT player_name, MIN(last_accessed) as oldest " +
-                         "FROM %s " +
-                         "WHERE player_name != ? " +
-                         "GROUP BY player_name " +
-                         "ORDER BY oldest ASC",
-                         API_CACHE_TABLE_NAME
-                 )
+             "SELECT player_name, MIN(last_accessed) as oldest " +
+                 String.format("FROM %s ", API_CACHE_TABLE_NAME) +
+                 "WHERE player_name != ? " +
+                 "GROUP BY player_name " +
+                 "ORDER BY oldest ASC"
              );
              PreparedStatement deleteStmt = conn.prepareStatement(
                  String.format("DELETE FROM %s WHERE player_name = ?", API_CACHE_TABLE_NAME)

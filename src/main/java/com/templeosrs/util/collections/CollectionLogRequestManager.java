@@ -131,7 +131,11 @@ public class CollectionLogRequestManager extends RequestManager {
                 .addPathSegments("api/collection-log/player_collection_log.php")
                 .addQueryParameter("player", username)
                 .addQueryParameter("categories", "all")
+                .addQueryParameter("includenames", "1")
+                .addQueryParameter("onlyitems", "1")
                 .build();
+
+        log.debug("url: {}", url);
 
         try {
             String response = get(url);

@@ -1,5 +1,6 @@
 package com.templeosrs.collectionlog.autosync;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import net.runelite.api.events.GameTick;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.DisplayName;
@@ -15,7 +16,9 @@ public class CollectionLogAutoSyncGameTickSubscriberTest extends MockedCollectio
     {
         GameTick gameTick = new GameTick();
 
-        collectionLogAutoSyncManager.getPendingSyncItems().add(Pair.of("Item name", 1));
+        collectionLogAutoSyncManager.getPendingSyncItems().add(
+            new ObtainedCollectionItem(1, "Item name", 1, null)
+        );
 
         eventBus.post(gameTick);
 
@@ -42,7 +45,9 @@ public class CollectionLogAutoSyncGameTickSubscriberTest extends MockedCollectio
         GameTick gameTick = new GameTick();
 
         collectionLogAutoSyncManager.startSyncCountdown();
-        collectionLogAutoSyncManager.getPendingSyncItems().add(Pair.of("Item name", 1));
+        collectionLogAutoSyncManager.getPendingSyncItems().add(
+            new ObtainedCollectionItem(1, "Item name", 1, null)
+        );
 
         final String username = "CousinOfKos";
         final long accountHash = 1234567890;

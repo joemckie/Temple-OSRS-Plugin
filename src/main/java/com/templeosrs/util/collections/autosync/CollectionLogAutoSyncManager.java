@@ -2,6 +2,7 @@ package com.templeosrs.util.collections.autosync;
 
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import lombok.Getter;
 import lombok.Setter;
@@ -72,7 +73,7 @@ public class CollectionLogAutoSyncManager {
      * Keeps track of what item IDs are pending a server sync
      */
     @Getter
-    protected final HashSet<Pair<String, Integer>> pendingSyncItems = new HashSet<>();
+    protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
 
     public void startUp()
     {
@@ -156,7 +157,7 @@ public class CollectionLogAutoSyncManager {
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
                 client.getAccountHash(),
-                pendingSyncItems.stream().map(item -> new ObtainedItem(item.getKey(), item.getValue(), 0)).toArray()
+                pendingSyncItems.toArray()
         );
 
         requestManager.uploadObtainedCollectionLogItems(submission, new Callback() {

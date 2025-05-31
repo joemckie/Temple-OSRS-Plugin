@@ -45,6 +45,7 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.game.ItemManager;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -61,30 +62,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @Singleton
 public class CollectionLogManager {
-    private Manifest manifest;
-    private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
-    private int cyclesSinceSuccessfulCall = 0;
-
-    /**
-     * Keeps track of what collection log slots the user has set
-     */
-    @Getter
-    protected final BitSet clogItemsBitSet = new BitSet();
-
-    /**
-     * Keeps track of the item count for each collection log item
-     */
-    @Getter
-    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
-
-    private int tickCollectionLogScriptFired = -1;
-
-    /**
-     * List of items found in the collection log, computed by reading the in-game enums/structs.
-     */
-    private final Map<Integer, CollectionItem> collectionLogItemMap = new HashMap<>();
-
-    private final Map<Integer, ObtainedCollectionItem> obtainedCollectionLogItems = new HashMap<>();
+    @Inject
+    private ItemManager itemManager;
 
     @Inject
     private SyncButtonManager syncButtonManager;
@@ -121,6 +100,31 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
+    private Manifest manifest;
+    private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
+    private int cyclesSinceSuccessfulCall = 0;
+
+    /**
+     * Keeps track of what collection log slots the user has set
+     */
+    @Getter
+    protected final BitSet clogItemsBitSet = new BitSet();
+
+    /**
+     * Keeps track of the item count for each collection log item
+     */
+    @Getter
+    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
+
+    private int tickCollectionLogScriptFired = -1;
+
+    /**
+     * List of items found in the collection log, computed by reading the in-game enums/structs.
+     */
+    private final Set<Integer> collectionLogItemsFromCache = new HashSet<>();
+
+    private final Map<Integer, ObtainedCollectionItem> obtainedCollectionLogItems = new HashMap<>();
+
     @Getter
     @Setter
     private boolean syncAllowed;
@@ -143,7 +147,7 @@ public class CollectionLogManager {
                 return false;
             }
 
-            collectionLogItemMap.putAll(parseCacheForClog());
+            collectionLogItemsFromCache.addAll(parseCacheForClog());
 
             return true;
         });
@@ -237,7 +241,7 @@ public class CollectionLogManager {
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
         if (preFired.getScriptId() == 4100) {
-            if (collectionLogItemMap.isEmpty()) {
+            if (collectionLogItemsFromCache.isEmpty()) {
                 return;
             }
 
@@ -248,14 +252,9 @@ public class CollectionLogManager {
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
+            String itemName = itemManager.getItemComposition(itemId).getName();
 
-            ObtainedCollectionItem item = ObtainedCollectionItem.builder()
-                .count(itemCount)
-                .category(collectionLogItemMap.get(itemId).getCategory())
-                .itemId(itemId)
-                .build();
-
-            obtainedCollectionLogItems.put(itemId, item);
+            obtainedCollectionLogItems.put(itemId, new ObtainedCollectionItem(itemId, itemName, itemCount, null));
         }
     }
 
@@ -274,13 +273,15 @@ public class CollectionLogManager {
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-        // If player data exists and auto-sync is enabled, check to see if any items have changed that require a sync
+        obtainedCollectionLogItems.put(ItemID.ABYSSAL_WHIP, new ObtainedCollectionItem(ItemID.ABYSSAL_WHIP, "Abyssal whip", 23, null));
+
         final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
         for (Map.Entry<Integer, ObtainedCollectionItem> item : obtainedCollectionLogItems.entrySet())
         {
-            final int itemId = item.getValue().getItemId();
-            final int itemCount = item.getValue().getCount();
+            final ObtainedCollectionItem value = item.getValue();
+            final int itemId = value.getId();
+            final int itemCount = value.getCount();
 
             collectionLogItemIdCountMap.add(itemId, itemCount);
         }
@@ -293,12 +294,18 @@ public class CollectionLogManager {
 
         // If the local data is out of sync with the current collection log, update it
         if (!itemDiff.isEmpty()) {
-            List<Map.Entry<Integer, ObtainedCollectionItem>> itemsToAdd = obtainedCollectionLogItems.entrySet()
+            List<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems.entrySet()
                     .stream()
                     .filter(item -> itemDiff.contains(item.getKey()))
+                    .map(Map.Entry::getValue)
                     .collect(Collectors.toList());
 
-            collectionLogAutoSyncManager.resetSyncCountdown();
+            for (ObtainedCollectionItem item : itemsToAdd)
+            {
+                collectionLogAutoSyncManager.getPendingSyncItems().add(item);
+            }
+
+            collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
 
             // Save the current state of the player's collection log for future diffing
             CollectionDatabase.upsertPlayerCollectionLogItems(username, itemsToAdd);
@@ -330,7 +337,7 @@ public class CollectionLogManager {
 
         out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
         out.collectionLogCounts = clogItemsCountSet;
-        out.collectionLogItemCount = collectionLogItemMap.size();
+        out.collectionLogItemCount = collectionLogItemsFromCache.size();
 
         return out;
     }
@@ -408,8 +415,8 @@ public class CollectionLogManager {
      * determine the item ids that need to be appended to the end of the
      * bitset we send to the TempleOSRS server.
      */
-    private Map<Integer, CollectionItem> parseCacheForClog() {
-        Map<Integer, CollectionItem> items = new HashMap<>();
+    private Set<Integer> parseCacheForClog() {
+        Set<Integer> items = new HashSet<>();
         // 2102 - Struct that contains the highest level tabs in the collection log (Bosses, Raids, etc)
         // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2102
         int[] topLevelTabStructIds = client.getEnum(2102).getIntVals();
@@ -432,12 +439,7 @@ public class CollectionLogManager {
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
 
                 for (int clogItemId : clogItems) {
-                    CollectionItem item = CollectionItem.builder()
-                        .category(subtabStructIndex)
-                        .itemId(clogItemId)
-                        .build();
-
-                    items.put(clogItemId, item);
+                    items.add(clogItemId);
                 }
             }
         }
@@ -451,12 +453,7 @@ public class CollectionLogManager {
         }
 
         for (int goodItemId : replacements.getIntVals()) {
-            CollectionItem item = CollectionItem.builder()
-                .category(0)
-                .itemId(goodItemId)
-                .build();
-
-            items.put(goodItemId, item);
+            items.add(goodItemId);
         }
 
         return items;
