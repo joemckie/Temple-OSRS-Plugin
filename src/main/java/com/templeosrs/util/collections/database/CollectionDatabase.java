@@ -109,6 +109,7 @@ public class CollectionDatabase {
      * @param playerName The player name associated with the data.
      * @param items The item set to persist to the database.
      */
+    // TODO: Delete items that are no longer in the collection log (in cases of rollbacks)
     public static void upsertPlayerCollectionLogItems(String playerName, List<Map.Entry<Integer, ObtainedCollectionItem>> items)
     {
         try (Connection conn = getConnection()) {
