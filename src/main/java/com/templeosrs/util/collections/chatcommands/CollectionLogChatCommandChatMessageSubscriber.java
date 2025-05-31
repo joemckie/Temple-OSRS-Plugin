@@ -4,6 +4,7 @@ import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogCategory;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.CollectionItem;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
@@ -181,7 +182,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             }
 
             // Fetch the requested category
-            List<CollectionItem> items = CollectionDatabase.getItemsByCategory(normalizedPlayerName, bossKey.toString());
+            List<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(normalizedPlayerName, 0);
             loadItemIcons(items);
 
             StringBuilder sb = new StringBuilder();
@@ -206,8 +207,8 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             if (items.isEmpty()) {
                 sb.append("No data found.");
             } else {
-                Map<Integer, CollectionItem> merged = new HashMap<>();
-                for (CollectionItem item : items)
+                Map<Integer, ObtainedCollectionItem> merged = new HashMap<>();
+                for (ObtainedCollectionItem item : items)
                 {
                     merged.compute(item.getItemId(), (id, existing) ->
                     {
@@ -218,7 +219,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 }
 
                 int i = 0;
-                for (CollectionItem item : merged.values())
+                for (ObtainedCollectionItem item : merged.values())
                 {
                     Integer icon = itemIconIndexes.get(item.getItemId());
                     if (icon != null)
@@ -270,7 +271,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
      * Loads the in-game icons for a given item list, ready to be used in the chat message.
      * @param items The item list for which to load item icons.
      */
-    private void loadItemIcons(List<CollectionItem> items) {
+    private void loadItemIcons(List<ObtainedCollectionItem> items) {
         List<CollectionItem> newItems = new ArrayList<>();
 
         for (CollectionItem item : items) {

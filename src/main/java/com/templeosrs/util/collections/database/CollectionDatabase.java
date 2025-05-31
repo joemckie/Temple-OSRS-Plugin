@@ -3,11 +3,10 @@ package com.templeosrs.util.collections.database;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
-import com.templeosrs.util.collections.data.CollectionItem;
 import com.templeosrs.util.collections.data.CollectionResponse;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
-import net.runelite.client.game.ItemVariationMapping;
 
 import javax.inject.Singleton;
 import java.io.File;
@@ -18,6 +17,9 @@ import java.util.*;
 @Singleton
 public class CollectionDatabase {
     private static final String DB_URL = "jdbc:h2:file:" + RuneLite.RUNELITE_DIR + "/templeosrs/runelite-collections;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1";
+
+    private static final String PLAYER_COLLECTION_LOG_TABLE = "player_collection_log";
+    private static final String API_CACHE_TABLE_NAME = "api_cache";
 
     static {
         File pluginDir = new File(RuneLite.RUNELITE_DIR, "templeosrs");
@@ -38,17 +40,31 @@ public class CollectionDatabase {
             Class.forName("org.h2.Driver");
 
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                stmt.executeUpdate("CREATE TABLE IF NOT EXISTS collection_log(" +
-                        "id IDENTITY PRIMARY KEY, " +
-                        "category VARCHAR(255), " +
-                        "item_id INT, " +
-                        "item_count INT, " +
-                        "item_name VARCHAR(255)," +
-                        "collected_date TIMESTAMP" +
-                        ")");
+                final String createPlayerCollectionLogTableSql = String.format(
+                        "CREATE TABLE IF NOT EXISTS %s(" +
+                                "id IDENTITY PRIMARY KEY, " +
+                                "item_id INT, " +
+                                "item_count INT, " +
+                                "player_name VARCHAR(255)" +
+                        ")",
+                        PLAYER_COLLECTION_LOG_TABLE
+                );
 
-                addColumnIfNotExists(conn, "collection_log", "player_name", "VARCHAR(255)");
-                addColumnIfNotExists(conn, "collection_log", "last_accessed", "TIMESTAMP");
+                final String createApiCacheTableSql = String.format(
+                        "CREATE TABLE IF NOT EXISTS %s(" +
+                                "id IDENTITY PRIMARY KEY, " +
+                                "category_name VARCHAR(255), " +
+                                "item_id INT, " +
+                                "item_count INT, " +
+                                "player_name VARCHAR(255), " +
+                                "collected_date TIMESTAMP, " +
+                                "last_accessed TIMESTAMP" +
+                        ")",
+                        API_CACHE_TABLE_NAME
+                );
+
+                stmt.executeUpdate(createPlayerCollectionLogTableSql);
+                stmt.executeUpdate(createApiCacheTableSql);
             }
         } catch (ClassNotFoundException e) {
             log.warn("H2 Driver class not found: {}", e.getMessage());
@@ -56,7 +72,6 @@ public class CollectionDatabase {
             log.warn("Database initialization failed: {}", e.getMessage());
         }
     }
-
 
     private static void addColumnIfNotExists(Connection conn, String table, String column, String type) throws SQLException {
         String checkQuery = "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = ? AND COLUMN_NAME = ?";
@@ -74,7 +89,7 @@ public class CollectionDatabase {
     }
 
     public static boolean hasPlayerData(String playerName) {
-        String sql = "SELECT 1 FROM collection_log WHERE player_name = ? LIMIT 1";
+        String sql = String.format("SELECT 1 FROM %s WHERE player_name = ? LIMIT 1", API_CACHE_TABLE_NAME);
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerName.toLowerCase());
             ResultSet rs = ps.executeQuery();
@@ -85,52 +100,103 @@ public class CollectionDatabase {
         }
     }
 
-    public static void insertItemsBatch(String playerName, String category, List<CollectionResponse.ItemEntry> items) {
+    /**
+     * Saves the current player's collection log to the Player Collection Log table.
+     * Note: this differs from the API cache data as it is designed to replicate the in-game log
+     * i.e. it only saves item IDs and their counts.
+     * It is primarily used to compute a diff of items to enable the auto-sync functionality.
+     *
+     * @param playerName The player name associated with the data.
+     * @param items The item set to persist to the database.
+     */
+    public static void upsertPlayerCollectionLogItems(String playerName, List<Map.Entry<Integer, ObtainedCollectionItem>> items)
+    {
+        log.debug("items to save: {}", items);
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
+
             try (PreparedStatement ps = conn.prepareStatement(
-                    "INSERT INTO collection_log (player_name, category, item_id, item_name, item_count, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?, ?)")) {
-                for (CollectionResponse.ItemEntry item : items) {
+                    String.format(
+                        "INSERT INTO %s (player_name, item_id, item_count) VALUES (?, ?, ?)",
+                        PLAYER_COLLECTION_LOG_TABLE
+                    )
+            ))
+            {
+                for (Map.Entry<Integer, ObtainedCollectionItem> item : items) {
                     ps.setString(1, playerName.toLowerCase());
-                    ps.setString(2, category);
-                    ps.setInt(3, item.id);
-                    ps.setString(4, item.name);
-                    ps.setInt(5, item.count);
-                    ps.setTimestamp(6, Timestamp.valueOf(item.date));
-                    ps.setTimestamp(7, new Timestamp(System.currentTimeMillis()));
+                    ps.setInt(2, item.getValue().getItemId());
+                    ps.setInt(3, item.getValue().getCount());
                     ps.addBatch();
                 }
+
                 ps.executeBatch();
             }
+
             conn.commit();
         } catch (SQLException e) {
-            log.warn("Error inserting items batch: {}", e.getMessage());
+            log.warn("Error inserting items from game data: {}", e.getMessage());
         }
     }
 
-    public static Multiset<Integer> findUpdatedItems(String playerName, Multiset<Integer> collectionLogItems)
+    /**
+     * Saves the API response data to the API cache table
+     * @param playerName The player name associated with the response
+     * @param items The items to persist to the database
+     */
+    public static void insertItemsBatch(String playerName, Map<String, List<CollectionResponse.ItemEntry>> items) {
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement ps = conn.prepareStatement(
+                String.format(
+                    "INSERT INTO %s (player_name, category_name, item_id, item_count, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)",
+                    API_CACHE_TABLE_NAME
+                )
+            ))
+            {
+                for (Map.Entry<String, List<CollectionResponse.ItemEntry>> entry : items.entrySet())
+                {
+                    final String categoryName = entry.getKey();
+
+                    for (CollectionResponse.ItemEntry item : entry.getValue()) {
+                        ps.setString(1, playerName.toLowerCase());
+                        ps.setString(2, categoryName);
+                        ps.setInt(3, item.id);
+                        ps.setInt(4, item.count);
+                        ps.setTimestamp(5, Timestamp.valueOf(item.date));
+                        ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
+                        ps.addBatch();
+                    }
+                }
+
+                ps.executeBatch();
+            }
+
+            conn.commit();
+        } catch (SQLException e) {
+            log.warn("Error inserting items to the API cache: {}", e.getMessage());
+        }
+    }
+
+    public static Multiset<Integer> getCollectionLogDiff(String playerName, Multiset<Integer> collectionLogItems)
     {
         try (Connection conn = getConnection())
         {
             try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT item_count, item_id FROM collection_log WHERE player_name = ? AND item_id = ? OR item_id = ? LIMIT 1"))
+                String.format(
+                    "SELECT item_count, item_id FROM %s WHERE player_name = ? AND item_id = ? LIMIT 1",
+                    PLAYER_COLLECTION_LOG_TABLE
+                )
+            ))
             {
                 final Multiset<Integer> foundItems = HashMultiset.create();
 
                 for (Multiset.Entry<Integer> entry : collectionLogItems.entrySet())
                 {
                     final int itemId = entry.getElement();
-                    final int baseItemId = ItemVariationMapping.map(itemId);
-
-                    if (foundItems.contains(baseItemId)) {
-                        foundItems.add(itemId, collectionLogItems.count(itemId));
-
-                        continue;
-                    }
 
                     ps.setString(1, playerName.toLowerCase());
                     ps.setInt(2, itemId);
-                    ps.setInt(3, baseItemId);
 
                     final ResultSet rs = ps.executeQuery();
 
@@ -140,10 +206,6 @@ public class CollectionDatabase {
                         final int rsItemId = rs.getInt("item_id");
 
                         foundItems.add(rsItemId, rsItemCount);
-
-                        if (rsItemId != itemId) {
-                            foundItems.add(itemId, rsItemCount);
-                        }
                     }
                 }
 
@@ -157,7 +219,7 @@ public class CollectionDatabase {
     }
 
     public static Timestamp getLatestTimestamp(String playerName) {
-        String sql = "SELECT MAX(collected_date) FROM collection_log WHERE player_name = ?";
+        String sql = String.format("SELECT MAX(collected_date) FROM %s WHERE player_name = ?", API_CACHE_TABLE_NAME);
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerName.toLowerCase());
             ResultSet rs = ps.executeQuery();
@@ -175,28 +237,38 @@ public class CollectionDatabase {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement())
         {
-            stmt.executeUpdate("DELETE FROM collection_log");
+            stmt.executeUpdate(String.format("DELETE FROM %s", API_CACHE_TABLE_NAME));
         } catch (SQLException e) {
             log.warn("Error clearing all items: {}", e.getMessage());
         }
     }
 
-    public static List<CollectionItem> getItemsByCategory(String playerName, String category) {
-        List<CollectionItem> items = new ArrayList<>();
+    public static List<ObtainedCollectionItem> getItemsByCategory(String playerName, int categoryId) {
+        List<ObtainedCollectionItem> items = new ArrayList<>();
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
-                     "SELECT item_id, item_name, item_count, collected_date FROM collection_log WHERE category = ? AND player_name = ?")) {
-            ps.setString(1, category);
+                 String.format(
+                     "SELECT item_id, item_count, collected_date FROM %s WHERE category = ? AND player_name = ?",
+                     API_CACHE_TABLE_NAME
+                 )
+        ))
+        {
+            ps.setInt(1, categoryId);
             ps.setString(2, playerName.toLowerCase());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     int itemId = rs.getInt("item_id");
-                    String name = rs.getString("item_name");
                     int count = rs.getInt("item_count");
                     Timestamp date = rs.getTimestamp("collected_date");
 
-                    items.add(new CollectionItem(category, itemId, name, count, date));
+                    ObtainedCollectionItem item = ObtainedCollectionItem.builder()
+                        .categoryId(categoryId)
+                        .itemId(itemId)
+                        .count(count)
+                        .build();
+
+                    items.add(item);
                 }
             }
         } catch (SQLException e) {
@@ -209,14 +281,17 @@ public class CollectionDatabase {
     public static void pruneOldPlayers(String yourUsername, int maxPlayers) {
         try (Connection conn = getConnection();
              PreparedStatement ps1 = conn.prepareStatement(
-                     "SELECT player_name, MIN(last_accessed) as oldest " +
-                             "FROM collection_log " +
-                             "WHERE player_name != ? " +
-                             "GROUP BY player_name " +
-                             "ORDER BY oldest ASC"
+                 String.format(
+                         "SELECT player_name, MIN(last_accessed) as oldest " +
+                         "FROM %s " +
+                         "WHERE player_name != ? " +
+                         "GROUP BY player_name " +
+                         "ORDER BY oldest ASC",
+                         API_CACHE_TABLE_NAME
+                 )
              );
              PreparedStatement deleteStmt = conn.prepareStatement(
-                     "DELETE FROM collection_log WHERE player_name = ?"
+                 String.format("DELETE FROM %s WHERE player_name = ?", API_CACHE_TABLE_NAME)
              )
         ) {
             ps1.setString(1, yourUsername.toLowerCase());

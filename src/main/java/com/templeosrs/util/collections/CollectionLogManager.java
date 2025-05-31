@@ -32,10 +32,7 @@ import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
-import com.templeosrs.util.collections.data.Manifest;
-import com.templeosrs.util.collections.data.PlayerData;
-import com.templeosrs.util.collections.data.PlayerDataSubmission;
-import com.templeosrs.util.collections.data.PlayerProfile;
+import com.templeosrs.util.collections.data.*;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import lombok.Getter;
@@ -64,10 +61,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Singleton
 public class CollectionLogManager {
-    private final int VARBITS_ARCHIVE_ID = 14;
-
-    private final Map<Integer, VarbitComposition> varbitCompositions = new HashMap<>();
-
     private Manifest manifest;
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
@@ -84,13 +77,14 @@ public class CollectionLogManager {
     @Getter
     protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
 
-    // Map item ids to bit index in the bitset
-    @Getter
-    private final HashMap<Integer, Integer> collectionLogItemIdToBitsetIndex = new HashMap<>();
-
     private int tickCollectionLogScriptFired = -1;
 
-    private final HashSet<Integer> collectionLogItemIdsFromCache = new HashSet<>();
+    /**
+     * List of items found in the collection log, computed by reading the in-game enums/structs.
+     */
+    private final Map<Integer, CollectionItem> collectionLogItemMap = new HashMap<>();
+
+    private final Map<Integer, ObtainedCollectionItem> obtainedCollectionLogItems = new HashMap<>();
 
     @Inject
     private SyncButtonManager syncButtonManager;
@@ -148,13 +142,9 @@ public class CollectionLogManager {
             if (client.getIndexConfig() == null || client.getGameState().ordinal() < GameState.LOGIN_SCREEN.ordinal()) {
                 return false;
             }
-            collectionLogItemIdsFromCache.addAll(parseCacheForClog());
 
-            populateCollectionLogItemIdToBitsetIndex();
-            final int[] varbitIds = client.getIndexConfig().getFileIds(VARBITS_ARCHIVE_ID);
-            for (int id : varbitIds) {
-                varbitCompositions.put(id, client.getVarbit(id));
-            }
+            collectionLogItemMap.putAll(parseCacheForClog());
+
             return true;
         });
 
@@ -228,9 +218,9 @@ public class CollectionLogManager {
                     }
 
                     // Skip sync if the player's collection log has already been saved and is up-to-date
-                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
-                        return true;
-                    }
+//                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
+//                        return true;
+//                    }
 
                     collectionLogService.syncCollectionLog();
 
@@ -241,59 +231,36 @@ public class CollectionLogManager {
     }
 
     /**
-     * Finds the index this itemId is assigned to in the collections mapping.
-     *
-     * @param itemId: The itemId to look up
-     * @return The index of the bit that represents the given itemId, if it is in the map. -1 otherwise.
-     */
-    private int lookupCollectionLogItemIndex(int itemId) {
-        // The map has not loaded yet, or failed to load.
-        if (collectionLogItemIdToBitsetIndex.isEmpty()) {
-            return -1;
-        }
-
-        Integer result = collectionLogItemIdToBitsetIndex.get(itemId);
-
-        return Objects.requireNonNullElse(result, -1);
-    }
-
-    /**
-     * Handles updating the collection log after the Temple sync button has been pressed.
+     * Handles updating the collection log after the log has opened or the Temple sync button has been pressed.
      */
     @Subscribe
     public void onScriptPreFired(ScriptPreFired preFired) {
-        if (isSyncAllowed() && preFired.getScriptId() == 4100) {
-            tickCollectionLogScriptFired = client.getTickCount();
-            if (collectionLogItemIdToBitsetIndex.isEmpty()) {
+        if (preFired.getScriptId() == 4100) {
+            if (collectionLogItemMap.isEmpty()) {
                 return;
             }
+
+            if (isSyncAllowed()) {
+                tickCollectionLogScriptFired = client.getTickCount();
+            }
+
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
             int itemCount = (int) args[2];
 
-            int idx = lookupCollectionLogItemIndex(itemId);
-            // We should never return -1 under normal circumstances
-            if (idx != -1) {
-                clogItemsBitSet.set(idx);
-                clogItemsCountSet.put(idx, itemCount);
-            }
+            ObtainedCollectionItem item = ObtainedCollectionItem.builder()
+                .count(itemCount)
+                .categoryId(collectionLogItemMap.get(itemId).getCategoryId())
+                .itemId(itemId)
+                .build();
+
+            obtainedCollectionLogItems.put(itemId, item);
         }
     }
 
     synchronized public void submitTask() {
-        // If sync hasn't been toggled to be allowed
-        if (!isSyncAllowed()) {
-            return;
-        }
-
         // TODO: do we want other GameStates?
-        if (client.getGameState() != GameState.LOGGED_IN || varbitCompositions.isEmpty()) {
-            return;
-        }
-
-        if (manifest == null || client.getLocalPlayer() == null) {
-			log.debug("Skipped due to bad manifest: {}", manifest);
-
+        if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null) {
             return;
         }
 
@@ -306,50 +273,52 @@ public class CollectionLogManager {
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-        final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
-
-        // If no player data exists, this is the first sync, so send everything.
-        if (!hasPlayerData) {
-            PlayerData newPlayerData = getPlayerData();
-            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
-
-            // Do not send if slot data wasn't generated
-            if (newPlayerData.collectionLogSlots.isEmpty()) {
-                return;
-            }
-
-            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
-
-            return;
-        }
-
-        if (!templeOSRSPlugin.getConfig().autoSyncClog()) {
-            return;
-        }
-
         // If player data exists and auto-sync is enabled, check to see if any items have changed that require a sync
         final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
-        for (Map.Entry<Integer, Integer> entry : collectionLogItemIdToBitsetIndex.entrySet())
+        for (Map.Entry<Integer, ObtainedCollectionItem> item : obtainedCollectionLogItems.entrySet())
         {
-            final int itemId = entry.getKey();
-            final int bitsetIndex = entry.getValue();
-            final int itemCount = clogItemsCountSet.getOrDefault(bitsetIndex, 0);
+            final int itemId = item.getValue().getItemId();
+            final int itemCount = item.getValue().getCount();
 
-            if (itemCount > 0) {
-                collectionLogItemIdCountMap.add(itemId, itemCount);
-            }
+            collectionLogItemIdCountMap.add(itemId, itemCount);
         }
 
-        final Multiset<Integer> itemDiff = CollectionDatabase.findUpdatedItems(username, collectionLogItemIdCountMap);
+        collectionLogItemIdCountMap.add(ItemID.ABYSSAL_WHIP, 100);
+
+        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
 
         if (itemDiff == null) {
             return;
         }
 
         if (!itemDiff.isEmpty()) {
-            log.debug("item diff: {}", itemDiff);
+            List<Map.Entry<Integer, ObtainedCollectionItem>> itemsToAdd = obtainedCollectionLogItems.entrySet()
+                    .stream()
+                    .filter(item -> itemDiff.contains(item.getKey()))
+                    .collect(Collectors.toList());
+
+            // Save the current state of the player's collection log for future diffing
+            CollectionDatabase.upsertPlayerCollectionLogItems(username, itemsToAdd);
         }
+
+        // If sync hasn't been toggled to be allowed
+        if (!isSyncAllowed()) {
+            return;
+        }
+//
+//        // If no player data exists, this is the first sync, so send everything.
+//        if (!hasPlayerData) {
+//            PlayerData newPlayerData = getPlayerData();
+//            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
+//
+//            // Do not send if slot data wasn't generated
+//            if (newPlayerData.collectionLogSlots.isEmpty()) {
+//                return;
+//            }
+//
+//            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
+//        }
     }
 
     private PlayerData getPlayerData() {
@@ -357,7 +326,7 @@ public class CollectionLogManager {
 
         out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
         out.collectionLogCounts = clogItemsCountSet;
-        out.collectionLogItemCount = collectionLogItemIdsFromCache.size();
+        out.collectionLogItemCount = collectionLogItemMap.size();
 
         return out;
     }
@@ -420,7 +389,6 @@ public class CollectionLogManager {
                     }
                     InputStream in = response.body().byteStream();
                     manifest = gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Manifest.class);
-                    populateCollectionLogItemIdToBitsetIndex();
                 } catch (JsonParseException e) {
 //                    System.out.println("Failed to parse manifest,");
                 } finally {
@@ -430,37 +398,14 @@ public class CollectionLogManager {
         });
     }
 
-    private void populateCollectionLogItemIdToBitsetIndex() {
-        if (manifest == null) {
-//			System.out.println("Manifest is not present so the collection log bitset index will not be updated");
-            return;
-        }
-        clientThread.invoke(() -> {
-            // Add missing keys in order to the map. Order is extremely important here so
-            // we get a stable map given the same cache data.
-            List<Integer> itemIdsMissingFromManifest = collectionLogItemIdsFromCache
-                    .stream()
-                    .filter((t) -> !manifest.collections.contains(t))
-                    .sorted()
-                    .collect(Collectors.toList());
-
-            int currentIndex = 0;
-            collectionLogItemIdToBitsetIndex.clear();
-            for (Integer itemId : manifest.collections)
-                collectionLogItemIdToBitsetIndex.put(itemId, currentIndex++);
-            for (Integer missingItemId : itemIdsMissingFromManifest)
-                collectionLogItemIdToBitsetIndex.put(missingItemId, currentIndex++);
-        });
-    }
-
     /**
      * Parse the enums and structs in the cache to figure out which item ids
      * exist in the collection log. This can be diffed with the manifest to
      * determine the item ids that need to be appended to the end of the
      * bitset we send to the TempleOSRS server.
      */
-    private HashSet<Integer> parseCacheForClog() {
-        HashSet<Integer> itemIds = new HashSet<>();
+    private Map<Integer, CollectionItem> parseCacheForClog() {
+        Map<Integer, CollectionItem> items = new HashMap<>();
         // 2102 - Struct that contains the highest level tabs in the collection log (Bosses, Raids, etc)
         // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2102
         int[] topLevelTabStructIds = client.getEnum(2102).getIntVals();
@@ -482,21 +427,36 @@ public class CollectionLogManager {
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
 
-                log.debug("subtabStructIndex: {} - clogitems: {}", subtabStructIndex, clogItems);
-                for (int clogItemId : clogItems) itemIds.add(clogItemId);
+                for (int clogItemId : clogItems) {
+                    CollectionItem item = CollectionItem.builder()
+                        .categoryId(subtabStructIndex)
+                        .itemId(clogItemId)
+                        .build();
+
+                    items.put(clogItemId, item);
+                }
             }
         }
 
         // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
         // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
         EnumComposition replacements = client.getEnum(3721);
-        for (int badItemId : replacements.getKeys())
-            itemIds.remove(badItemId);
-        for (int goodItemId : replacements.getIntVals())
-            itemIds.add(goodItemId);
 
-        log.debug("item ids: {}", itemIds);
+        for (int badItemId : replacements.getKeys()) {
+            items.remove(badItemId);
+        }
 
-        return itemIds;
+        for (int goodItemId : replacements.getIntVals()) {
+            CollectionItem item = CollectionItem.builder()
+                .categoryId(0)
+                .itemId(goodItemId)
+                .build();
+
+            items.put(goodItemId, item);
+        }
+
+        log.debug("item ids: {}", items);
+
+        return items;
     }
 }

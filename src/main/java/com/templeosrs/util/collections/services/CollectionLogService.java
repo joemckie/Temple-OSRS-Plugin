@@ -1,6 +1,7 @@
 package com.templeosrs.util.collections.services;
 
 import com.templeosrs.util.collections.CollectionLogRequestManager;
+import com.templeosrs.util.collections.data.CollectionResponse;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
@@ -9,6 +10,8 @@ import net.runelite.api.Client;
 
 import javax.inject.Inject;
 import java.sql.Timestamp;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -71,7 +74,13 @@ public class CollectionLogService {
 
             log.debug("🧩 Parsing and storing JSON...");
 
-            collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(username), json);
+            final String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(username);
+            final Map<String, List<CollectionResponse.ItemEntry>> items = collectionParser.parse(
+                    normalizedPlayerName,
+                    json
+            );
+
+            collectionParser.store(normalizedPlayerName, items);
 
             log.debug("✅ Parsing complete.");
         });

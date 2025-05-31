@@ -1,16 +1,13 @@
 package com.templeosrs.util.collections.data;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-
-import java.sql.Timestamp;
+import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Data
-@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
 public class CollectionItem {
-    private String category;
+    private int categoryId;
     private int itemId;
-    private String name;
-    private int count;
-    private Timestamp date;
 }

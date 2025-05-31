@@ -4,6 +4,7 @@ import com.google.gson.*;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 import java.util.ArrayList;
@@ -22,14 +23,16 @@ public class CollectionParser {
     private Gson gson;
 
     /**
-     * Parses Temple's collection log response and persists it to the local database.
-     * @param rawUsername The username associated with the collection log data
-     * @param json The raw JSON response from the Player Collection Log API
+     * Parses the Temple API response to a map of collection log items
+     * @param rawUsername The username associated with the response
+     * @param json The raw JSON response from the Player Collection Log endpoint
+     * @return A map of categories and their respective items, where the key is the API category (e.g. kree_arra).
      */
-    public void parseAndStore(String rawUsername, String json) {
+    public Map<String, List<CollectionResponse.ItemEntry>> parse(String rawUsername, String json)
+    {
         final String username = rawUsername.toLowerCase();
 
-        log.debug("🧹 Starting parseAndStore() for user: {}...", username);
+        log.debug("🧹 Starting parse() for user: {}...", username);
 
         JsonElement root;
 
@@ -43,7 +46,7 @@ public class CollectionParser {
             // Check if the root element is a primitive (string, number, etc.)
             if (root.isJsonPrimitive()) {
                 log.error("❌ The response for user {} is a primitive value: {}", username, root.getAsString());
-                return;
+                return null;
             }
 
             // Check if the root element is a JsonObject
@@ -53,10 +56,10 @@ public class CollectionParser {
 
         } catch (JsonSyntaxException e) {
             log.error("❌ Failed to parse JSON for {}: {}", username, e.getMessage());
-            return;
+            return null;
         } catch (Exception e) {
             log.error("❌ Unexpected error while parsing JSON for {}: {}", username, e.getMessage());
-            return;
+            return null;
         }
 
         JsonObject rootObject = root.getAsJsonObject();
@@ -65,16 +68,19 @@ public class CollectionParser {
         if (rootObject.has("error")) {
             JsonObject error = rootObject.getAsJsonObject("error");
             String errorMessage = error.get("Message").getAsString();
-            if (errorMessage.contains("Player has not synced")) {
+
+            if (errorMessage.contains("Player has not synced")){
                 log.warn("⚠️ Player {} has not synced their collection log yet.", username);
             } else {
                 log.warn("⚠️ API error for {}: {}", username, errorMessage);
             }
-            return; // Stop further processing for this player
+
+            return null; // Stop further processing for this player
         }
 
         // Handle success response
         if (rootObject.has("data")) {
+            Map<String, List<CollectionResponse.ItemEntry>> itemMap = new HashMap<>();
             JsonObject data = rootObject.getAsJsonObject("data");
             JsonObject items = data.getAsJsonObject("items");
 
@@ -97,20 +103,60 @@ public class CollectionParser {
                     itemCount++;
                 }
 
-                // ✅ Perform batch insert for the whole category with player name
-                CollectionDatabase.insertItemsBatch(username, categoryName, entryList);
+                itemMap.put(categoryName, entryList);
             }
 
-            log.debug("✅ Parsed {} categories and inserted {} items total for {}.", categoryCount, itemCount, username);
+            log.debug("✅ Parsed {} categories and {} items for {}.", categoryCount, itemCount, username);
 
-            // ✅ Manually shut down the database after insert
-            try (Connection conn = CollectionDatabase.getConnection();
-                 Statement stmt = conn.createStatement()) {
-                stmt.execute("SHUTDOWN");
-                log.debug("🚗 Manually closed H2 database after sync.");
-            } catch (SQLException e) {
-                log.error("⚠️ Error while trying to shut down the database", e);
-            }
+            return itemMap;
         }
+
+        return null;
+    }
+
+    /**
+     * Parses Temple's collection log response and persists it to the local database.
+     * @param rawUsername The username associated with the collection log data
+     * @param items The collection log item map to persist to the database, where the key is the API category
+     */
+    public void store(String rawUsername, Map<String, List<CollectionResponse.ItemEntry>> items)
+    {
+        final String username = rawUsername.toLowerCase();
+
+        if (items == null) {
+            log.warn("⚠️ No items found to store for {}", username);
+            return;
+        }
+
+        log.debug("🧹 Starting store() for user: {}...", username);
+
+        int categoryCount = items.size();
+        int itemCount = items.entrySet()
+                .stream()
+                .mapToInt(item -> items.size())
+                .sum();
+
+        CollectionDatabase.insertItemsBatch(username, items);
+
+        log.debug("✅ Parsed {} categories and inserted {} items total for {}.", categoryCount, itemCount, username);
+
+        // ✅ Manually shut down the database after insert
+        try (Connection conn = CollectionDatabase.getConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("SHUTDOWN");
+            log.debug("🚗 Manually closed H2 database after sync.");
+        } catch (SQLException e) {
+            log.error("⚠️ Error while trying to shut down the database", e);
+        }
+    }
+
+    /**
+     * Combines the parse and store methods for ease of use.
+     * @see #parse(String username, String json)
+     * @see #store(String username, Map collectionLogItems)
+     */
+    public void parseAndStore(String rawUsername, String json)
+    {
+        store(rawUsername, parse(rawUsername, json));
     }
 }
