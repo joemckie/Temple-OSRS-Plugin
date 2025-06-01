@@ -29,6 +29,7 @@ import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.annotations.Component;
@@ -87,8 +88,11 @@ public class SyncButtonManager {
     @Inject
     private CollectionLogManager collectionLogManager;
 
+    @Getter
+    @Setter
+    private boolean fullSyncRequested = false;
+
     public void startUp() {
-        collectionLogManager.setSyncButtonPressed(false);
         eventBus.register(this);
         clientThread.invokeLater(() -> tryAddButton(this::onButtonClick));
     }
@@ -136,7 +140,8 @@ public class SyncButtonManager {
         }
         lastAttemptedUpdate = client.getTickCount();
 
-        collectionLogManager.setSyncButtonPressed(true);
+        setFullSyncRequested(true);
+
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
         client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Your collection log data is being sent to TempleOSRS...", "TempleOSRS");

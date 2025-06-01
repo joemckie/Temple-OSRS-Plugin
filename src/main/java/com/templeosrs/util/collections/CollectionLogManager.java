@@ -26,7 +26,6 @@ package com.templeosrs.util.collections;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
-import com.google.gson.Gson;
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
@@ -36,7 +35,7 @@ import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
-import lombok.Setter;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.events.*;
@@ -46,8 +45,6 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
-import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -67,9 +64,6 @@ public class CollectionLogManager {
 
     @Inject
     private ScheduledExecutorService scheduledExecutorService;
-
-    @Inject
-    private Gson gson;
 
     @Getter
     @Inject
@@ -97,7 +91,6 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
-    private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
     private int tickCollectionLogScriptFired = -1;
 
@@ -118,10 +111,6 @@ public class CollectionLogManager {
      */
     @Getter
     private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
-
-    @Getter
-    @Setter
-    private boolean syncButtonPressed;
 
     public void startUp() {
         eventBus.register(this);
@@ -231,9 +220,7 @@ public class CollectionLogManager {
                 return;
             }
 
-            if (isSyncButtonPressed()) {
-                tickCollectionLogScriptFired = client.getTickCount();
-            }
+            tickCollectionLogScriptFired = client.getTickCount();
 
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
@@ -244,7 +231,8 @@ public class CollectionLogManager {
         }
     }
 
-    synchronized public void submitTask() {
+    @Synchronized
+    public void submitTask() {
         // TODO: do we want other GameStates?
         if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null) {
             return;
@@ -256,97 +244,88 @@ public class CollectionLogManager {
             return;
         }
 
-        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
-        PlayerProfile profileKey = new PlayerProfile(username, profileType);
-
         final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
 
         // If no API player data exists or if the sync button has been pressed, upload the entire log
-        if (!hasPlayerData || isSyncButtonPressed())
+        if (!hasPlayerData || syncButtonManager.isFullSyncRequested())
         {
-            PlayerData newPlayerData = getPlayerData();
-            PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
+            submitPlayerData();
 
-            // Do not send if slot data wasn't generated
-            if (newPlayerData.collectionLogSlots.isEmpty()) {
-                log.error("❌ No collection log slots have been set for {}", username);
-
-                return;
-            }
-
-            submitPlayerData(profileKey, newPlayerData, oldPlayerData);
+            return;
         }
+
         // If API player data exists and the sync button hasn't been pressed, only upload the item diff
         // TODO: Limit how often this can occur
-        else
+
+        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+
+        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
         {
-            final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+            final int itemId = item.getId();
+            final int itemCount = item.getCount();
 
-            for (ObtainedCollectionItem item : obtainedCollectionLogItems)
-            {
-                final int itemId = item.getId();
-                final int itemCount = item.getCount();
-
-                collectionLogItemIdCountMap.add(itemId, itemCount);
-            }
-
-            final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
-
-            if (itemDiff == null) {
-                return;
-            }
-
-            // If the local data is out of sync with the current collection log, update it
-            if (!itemDiff.isEmpty()) {
-                Set<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems
-                        .stream()
-                        .filter(item -> itemDiff.contains(item.getId()))
-                        .collect(Collectors.toSet());
-
-                for (ObtainedCollectionItem item : itemsToAdd)
-                {
-                    collectionLogAutoSyncManager.getPendingSyncItems().add(item);
-                }
-
-                collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
-            }
+            collectionLogItemIdCountMap.add(itemId, itemCount);
         }
+
+        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+
+        if (itemDiff == null || itemDiff.isEmpty()) {
+            return;
+        }
+
+        Set<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+
+        // Add the log items found in the diff to the pending sync items set
+        obtainedCollectionLogItems
+            .stream()
+            // Name check isn't technically needed here, but it helps suppress warnings
+            .filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
+            .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
+            .forEach(pendingSyncItems::add);
+
+        collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
     }
 
-    private PlayerData getPlayerData() {
-        PlayerData out = new PlayerData();
-
-        out.collectionLogSlots = obtainedCollectionLogItems;
-        out.collectionLogItemCount = collectionLogItemsFromCache.size();
-
-        return out;
-    }
-
-    private void merge(PlayerData oldPlayerData, PlayerData delta) {
-        oldPlayerData.collectionLogSlots = delta.collectionLogSlots;
-        oldPlayerData.collectionLogItemCount = delta.collectionLogItemCount;
-    }
-
-    private void submitPlayerData(PlayerProfile profileKey, PlayerData delta, PlayerData old) {
+    private void submitPlayerData() {
         // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
         // This gives us quadratic backoff.
         cyclesSinceSuccessfulCall += 1;
-        
+
         if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
             return;
         }
+
+        String username = client.getLocalPlayer().getName();
+
+        // Do not send if slot data wasn't generated
+        if (obtainedCollectionLogItems.isEmpty()) {
+            log.error("❌ No obtained items have been set for {}", username);
+
+            return;
+        }
+
+        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
+        PlayerProfile profileKey = new PlayerProfile(username, profileType);
+
+        // Only IDs and counts are useful in the request
+        Set<ObtainedCollectionItem> preparedItems = obtainedCollectionLogItems
+                .stream()
+                .map(item -> new ObtainedCollectionItem(item.getId(), item.getCount()))
+                .collect(Collectors.toSet());
+
+        int totalCollectionsAvailable = collectionLogItemsFromCache.size();
+
+        PlayerData playerData = new PlayerData(totalCollectionsAvailable, preparedItems);
 
         PlayerDataSubmission submission = new PlayerDataSubmission(
                 profileKey.getUsername(),
                 profileKey.getProfileType().name(),
                 client.getAccountHash(),
-                delta
+                playerData
         );
 
         try {
             requestManager.uploadFullCollectionLog(submission);
-
-            merge(old, delta);
             cyclesSinceSuccessfulCall = 0;
         } catch (IOException e) {
             log.error("❌ Failed to upload collection log for {}", submission.getUsername());

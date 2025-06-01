@@ -151,10 +151,10 @@ public class CollectionLogAutoSyncManager {
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
         
         PlayerDataSync submission = new PlayerDataSync(
-                profileKey.getUsername(),
-                profileKey.getProfileType().name(),
-                client.getAccountHash(),
-                pendingSyncItems.toArray()
+            profileKey.getUsername(),
+            profileKey.getProfileType().name(),
+            client.getAccountHash(),
+            pendingSyncItems
         );
 
         try {
