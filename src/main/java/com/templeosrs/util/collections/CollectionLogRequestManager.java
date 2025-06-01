@@ -12,6 +12,7 @@ import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
+import java.io.IOException;
 import java.io.StringReader;
 
 @Slf4j
@@ -22,19 +23,17 @@ public class CollectionLogRequestManager extends RequestManager {
     /**
      * Uploads newly obtained collection log items to the server.
      * Used by the auto-sync feature to automatically synchronise the collection log.
-     * 
+     *
      * @param data The data to be uploaded.
-     * @param callback The callback to handle the response.
      */
-    public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data, Callback callback)
-    {
+    public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data) throws IOException {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
                 .addPathSegments("api/collection-log/sync_new_collections.php")
                 .build();
 
-        post(url, data, callback);
+        post(url, data);
     }
 
     /**
@@ -53,23 +52,6 @@ public class CollectionLogRequestManager extends RequestManager {
                 .build();
 
         post(url, data, callback);
-    }
-
-    /**
-     * Retrieves the collection log manifest from the server.
-     * The manifest contains information that maps the collection log items to their respective IDs/varbits.
-     * 
-     * @param callback The callback to handle the response.
-     */
-    public void getCollectionLogManifest(Callback callback)
-    {
-        final HttpUrl url = new HttpUrl.Builder()
-                .scheme(scheme)
-                .host(host)
-                .addPathSegments("collection-log/manifest.json")
-                .build();
-
-        get(url, callback);
     }
 
     /**

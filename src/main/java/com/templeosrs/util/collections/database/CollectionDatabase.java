@@ -3,7 +3,6 @@ package com.templeosrs.util.collections.database;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
-import com.templeosrs.util.collections.data.CollectionResponse;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
@@ -112,7 +111,7 @@ public class CollectionDatabase {
      * @param items The item set to persist to the database.
      */
     // TODO: Delete items that are no longer in the collection log (in cases of rollbacks)
-    public static void upsertPlayerCollectionLogItems(String playerName, List<ObtainedCollectionItem> items)
+    public static void upsertPlayerCollectionLogItems(String playerName, Set<ObtainedCollectionItem> items)
     {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);

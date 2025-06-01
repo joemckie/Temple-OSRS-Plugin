@@ -6,6 +6,7 @@ import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
@@ -16,13 +17,9 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
-import okhttp3.*;
-import org.apache.commons.lang3.tuple.Pair;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
-import java.io.IOException;
 import java.util.HashSet;
 
 @Slf4j
@@ -147,7 +144,8 @@ public class CollectionLogAutoSyncManager {
      * Uploads the obtained collection log items to the server.
      * This is called when the sync countdown has completed and there are items pending a sync.
      */
-    synchronized public void uploadObtainedCollectionLogItems()
+    @Synchronized
+    public void uploadObtainedCollectionLogItems()
     {
         String username = client.getLocalPlayer().getName();
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
@@ -160,27 +158,13 @@ public class CollectionLogAutoSyncManager {
                 pendingSyncItems.toArray()
         );
 
-        requestManager.uploadObtainedCollectionLogItems(submission, new Callback() {
-            @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
-                 log.debug("Failed to submit: ", e);
-            }
-
-            @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) {
-                try {
-                    if (!response.isSuccessful()) {
-                        log.debug("Failed to submit: {}", response.code());
-
-                        return;
-                    }
-
-                    obtainedItemNames.clear();
-                    pendingSyncItems.clear();
-                } finally {
-                    response.close();
-                }
-            }
-        });
+        try {
+            requestManager.uploadObtainedCollectionLogItems(submission);
+            
+            obtainedItemNames.clear();
+            pendingSyncItems.clear();
+        } catch (Exception e) {
+            log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
+        }
     }
 }

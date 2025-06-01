@@ -103,6 +103,20 @@ public class RequestManager {
     }
 
     /**
+     * Initiates a synchronous POST request with the given data.
+     *
+     * @param url  The URL to send the request to.
+     * @param data The data to be sent in the request body.
+     */
+    protected void post(@NotNull HttpUrl url, @NotNull Object data) throws IOException {
+        final Request request = buildRequest(url)
+                .post(RequestBody.create(JSON, gson.toJson(data)))
+                .build();
+
+        doRequest(request);
+    }
+
+    /**
      * Initiates a POST request with the given data.
      * @param url The URL to send the request to.
      * @param data The data to be sent in the request body.

@@ -27,7 +27,6 @@ package com.templeosrs.util.collections;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.gson.Gson;
-import com.google.gson.JsonParseException;
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
@@ -52,9 +51,6 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
@@ -100,7 +96,6 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
-    private Manifest manifest;
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
 
@@ -123,7 +118,10 @@ public class CollectionLogManager {
      */
     private final Set<Integer> collectionLogItemsFromCache = new HashSet<>();
 
-    private final Map<Integer, ObtainedCollectionItem> obtainedCollectionLogItems = new HashMap<>();
+    /**
+     * Unique list of all obtained collection log items
+     */
+    private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
 
     @Getter
     @Setter
@@ -151,8 +149,6 @@ public class CollectionLogManager {
 
             return true;
         });
-
-        checkManifest();
     }
 
     public void shutDown() {
@@ -188,14 +184,9 @@ public class CollectionLogManager {
     @Subscribe
     public void onGameTick(GameTick gameTick) {
         // Submit the collection log data two ticks after the first script prefires
-        if (tickCollectionLogScriptFired != -1 && tickCollectionLogScriptFired + 2 < client.getTickCount()) {
+        if (tickCollectionLogScriptFired != -1 && tickCollectionLogScriptFired + 2 < client.getTickCount())
+        {
             tickCollectionLogScriptFired = -1;
-
-            if (manifest == null) {
-                client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Failed to sync collection log. Try restarting the TempleOSRS plugin.", "TempleOSRS");
-                return;
-            }
-
             scheduledExecutorService.execute(this::submitTask);
         }
     }
@@ -254,7 +245,7 @@ public class CollectionLogManager {
             int itemCount = (int) args[2];
             String itemName = itemManager.getItemComposition(itemId).getName();
 
-            obtainedCollectionLogItems.put(itemId, new ObtainedCollectionItem(itemId, itemName, itemCount, null));
+            obtainedCollectionLogItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount));
         }
     }
 
@@ -273,15 +264,12 @@ public class CollectionLogManager {
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-        obtainedCollectionLogItems.put(ItemID.ABYSSAL_WHIP, new ObtainedCollectionItem(ItemID.ABYSSAL_WHIP, "Abyssal whip", 23, null));
-
         final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
-        for (Map.Entry<Integer, ObtainedCollectionItem> item : obtainedCollectionLogItems.entrySet())
+        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
         {
-            final ObtainedCollectionItem value = item.getValue();
-            final int itemId = value.getId();
-            final int itemCount = value.getCount();
+            final int itemId = item.getId();
+            final int itemCount = item.getCount();
 
             collectionLogItemIdCountMap.add(itemId, itemCount);
         }
@@ -294,11 +282,10 @@ public class CollectionLogManager {
 
         // If the local data is out of sync with the current collection log, update it
         if (!itemDiff.isEmpty()) {
-            List<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems.entrySet()
+            Set<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems
                     .stream()
-                    .filter(item -> itemDiff.contains(item.getKey()))
-                    .map(Map.Entry::getValue)
-                    .collect(Collectors.toList());
+                    .filter(item -> itemDiff.contains(item.getId()))
+                    .collect(Collectors.toSet());
 
             for (ObtainedCollectionItem item : itemsToAdd)
             {
@@ -384,36 +371,8 @@ public class CollectionLogManager {
         });
     }
 
-    private void checkManifest() {
-        requestManager.getCollectionLogManifest(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-//				log.debug("Failed to get manifest: ", e);
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) {
-                try {
-                    if (!response.isSuccessful()) {
-//						log.debug("Failed to get manifest: {}", response.code());
-                        return;
-                    }
-                    InputStream in = response.body().byteStream();
-                    manifest = gson.fromJson(new InputStreamReader(in, StandardCharsets.UTF_8), Manifest.class);
-                } catch (JsonParseException e) {
-//                    System.out.println("Failed to parse manifest,");
-                } finally {
-                    response.close();
-                }
-            }
-        });
-    }
-
     /**
-     * Parse the enums and structs in the cache to figure out which item ids
-     * exist in the collection log. This can be diffed with the manifest to
-     * determine the item ids that need to be appended to the end of the
-     * bitset we send to the TempleOSRS server.
+     * Parse the enums and structs in the cache to figure out which item ids exist in the collection log.
      */
     private Set<Integer> parseCacheForClog() {
         Set<Integer> items = new HashSet<>();

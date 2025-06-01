@@ -120,7 +120,8 @@ public class CollectionParser {
 
         // ✅ Manually shut down the database after insert
         try (Connection conn = CollectionDatabase.getConnection();
-             Statement stmt = conn.createStatement()) {
+             Statement stmt = conn.createStatement()
+        ) {
             stmt.execute("SHUTDOWN");
             log.debug("🚗 Manually closed H2 database after sync.");
         } catch (SQLException e) {

@@ -40,7 +40,7 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
                 collectionLogAutoSyncManager.pendingSyncItems.add(
-                        new ObtainedCollectionItem(itemId, itemName, itemCount, null)
+                        new ObtainedCollectionItem(itemId, itemName, itemCount)
                 );
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 

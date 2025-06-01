@@ -56,7 +56,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             int itemCount = item.getCount();
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
-                collectionLogAutoSyncManager.pendingSyncItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount, null));
+                collectionLogAutoSyncManager.pendingSyncItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 
                 isNewCollectionLogFound.set(true);
