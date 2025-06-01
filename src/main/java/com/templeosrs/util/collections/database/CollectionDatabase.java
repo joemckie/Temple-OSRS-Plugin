@@ -7,6 +7,7 @@ import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Singleton;
 import java.io.File;
@@ -316,7 +317,7 @@ public class CollectionDatabase {
         return sortedItems;
     }
 
-    public static void pruneOldPlayers(String yourUsername, int maxPlayers) {
+    public static void pruneOldPlayers(@NotNull String yourUsername, int maxPlayers) {
         try (Connection conn = getConnection();
              PreparedStatement ps1 = conn.prepareStatement(
              "SELECT player_name, MIN(last_accessed) as oldest " +

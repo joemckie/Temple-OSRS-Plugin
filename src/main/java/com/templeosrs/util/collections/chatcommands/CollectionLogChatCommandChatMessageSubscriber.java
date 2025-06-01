@@ -142,9 +142,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
         String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(playerName);  // Normalize the player name for the API call
-        String localName = client.getLocalPlayer() != null
-                ? PlayerNameUtils.normalizePlayerName(client.getLocalPlayer().getName())
-                : "";
+        String localName = PlayerNameUtils.normalizePlayerName(client.getLocalPlayer().getName());
         boolean isLocalPlayer = normalizedPlayerName.equalsIgnoreCase(localName);
 
         scheduledExecutorService.execute(() ->
@@ -159,11 +157,11 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 String json = collectionLogRequestManager.getPlayerCollectionLog(normalizedPlayerName);
 
                 // Handle empty or failed fetch
-                if (json == null || json.isEmpty())
+                if (json == null || json.contains("error:unsynced"))
                 {
                     log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
 
-                    final String errorMessage = json != null && json.contains("Player has not synced")
+                    final String errorMessage = json != null && json.contains("error:unsynced")
                         ? "⚠️ " + playerName + " has not synced their log on TempleOSRS."
                         : "⚠️ Failed to fetch log for " + playerName + ".";  // Use original name here
 
@@ -198,7 +196,6 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             loadItemIcons(items);
 
             StringBuilder sb = new StringBuilder();
-
             String categoryName = categoryStruct.getStringValue(689);
 
             // If sender's name is same as the player being queried, omit the player's name

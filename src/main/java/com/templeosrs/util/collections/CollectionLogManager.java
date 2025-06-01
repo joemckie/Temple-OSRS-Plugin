@@ -316,7 +316,7 @@ public class CollectionLogManager {
     private PlayerData getPlayerData() {
         PlayerData out = new PlayerData();
 
-        out.collectionLogSlots = gson.toJson(obtainedCollectionLogItems);
+        out.collectionLogSlots = obtainedCollectionLogItems;
         out.collectionLogItemCount = collectionLogItemsFromCache.size();
 
         return out;
@@ -331,6 +331,7 @@ public class CollectionLogManager {
         // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
         // This gives us quadratic backoff.
         cyclesSinceSuccessfulCall += 1;
+        
         if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
             return;
         }
@@ -342,26 +343,14 @@ public class CollectionLogManager {
                 delta
         );
 
-        requestManager.uploadFullCollectionLog(submission, new Callback() {
-            @Override
-            public void onFailure(@NotNull Call call, @NotNull IOException e) {
-				log.debug("Failed to submit: ", e);
-            }
+        try {
+            requestManager.uploadFullCollectionLog(submission);
 
-            @Override
-            public void onResponse(@NotNull Call call, @NotNull Response response) {
-                try {
-                    if (!response.isSuccessful()) {
-						log.debug("Failed to submit: {}", response.code());
-                        return;
-                    }
-                    merge(old, delta);
-                    cyclesSinceSuccessfulCall = 0;
-                } finally {
-                    response.close();
-                }
-            }
-        });
+            merge(old, delta);
+            cyclesSinceSuccessfulCall = 0;
+        } catch (IOException e) {
+            log.error("❌ Failed to upload collection log for {}", submission.getUsername());
+        }
     }
 
     /**

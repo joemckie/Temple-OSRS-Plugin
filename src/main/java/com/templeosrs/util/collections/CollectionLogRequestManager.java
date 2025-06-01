@@ -41,17 +41,15 @@ public class CollectionLogRequestManager extends RequestManager {
      * Triggered by the Collection Log Sync button.
      * 
      * @param data The data to be uploaded.
-     * @param callback The callback to handle the response.
      */
-    public void uploadFullCollectionLog(@NotNull PlayerDataSubmission data, Callback callback)
-    {
+    public void uploadFullCollectionLog(@NotNull PlayerDataSubmission data) throws IOException {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
                 .addPathSegments("api/collection-log/sync_collection.php")
                 .build();
 
-        post(url, data, callback);
+        post(url, data);
     }
 
     /**
@@ -60,7 +58,7 @@ public class CollectionLogRequestManager extends RequestManager {
      * @param username The username to check
      * @link <a href="https://templeosrs.com/api_doc.php#Player_Information">Player Info API</a>
      */
-    public String getLastChangedTimestamp(String username) {
+    public String getLastChangedTimestamp(@NotNull String username) {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
@@ -105,7 +103,7 @@ public class CollectionLogRequestManager extends RequestManager {
      * @return The collection log data
      * @link <a href="https://templeosrs.com/api_doc.php#Player_Collection_Log">Player Collection Log API</a>
      */
-    public String getPlayerCollectionLog(String username)
+    public String getPlayerCollectionLog(@NotNull String username)
     {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
@@ -116,8 +114,6 @@ public class CollectionLogRequestManager extends RequestManager {
                 .addQueryParameter("includenames", "1")
                 .addQueryParameter("onlyitems", "1")
                 .build();
-
-        log.debug("url: {}", url);
 
         try {
             String response = get(url);
