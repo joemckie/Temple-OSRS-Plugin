@@ -261,8 +261,6 @@ public class CollectionLogManager {
         // This gives us quadratic backoff.
         ticksSinceSuccessfulCall++;
 
-        log.debug("cycles: {}", ticksSinceSuccessfulCall);
-
         if (Math.pow((int) Math.sqrt(ticksSinceSuccessfulCall), 2) != ticksSinceSuccessfulCall) {
             setSubmitting(false);
 

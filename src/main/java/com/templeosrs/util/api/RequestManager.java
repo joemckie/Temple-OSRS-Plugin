@@ -73,7 +73,6 @@ public class RequestManager {
      * @param data The data to be sent in the request body.
      */
     protected String post(@NotNull HttpUrl url, @NotNull Object data) throws IOException {
-        log.debug("data: {}", gson.toJson(data));
         final Request request = buildRequest(url)
                 .post(RequestBody.create(JSON, gson.toJson(data)))
                 .build();

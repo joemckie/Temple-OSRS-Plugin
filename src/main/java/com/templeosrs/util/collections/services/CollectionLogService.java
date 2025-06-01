@@ -51,8 +51,6 @@ public class CollectionLogService {
         scheduledExecutorService.execute(() -> {
             log.debug("🔄 Starting syncCollectionLog()...");
 
-            CollectionDatabase.clearAll();
-
             if (client.getLocalPlayer() == null) {
                 log.warn("⚠️ Local player is null — not logged in yet.");
                 return;
