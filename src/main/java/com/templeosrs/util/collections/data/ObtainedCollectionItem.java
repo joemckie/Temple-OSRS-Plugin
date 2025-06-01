@@ -1,7 +1,6 @@
 package com.templeosrs.util.collections.data;
 
 import lombok.Value;
-import lombok.experimental.NonFinal;
 
 import java.sql.Timestamp;
 

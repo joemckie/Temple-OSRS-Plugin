@@ -34,6 +34,7 @@ import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChat
 import com.templeosrs.util.collections.data.*;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
+import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -123,6 +124,14 @@ public class CollectionLogManager {
      */
     private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
 
+    /**
+     * Maps in-game categories to the list of items they contain. Pulled from the in-game cache, where the key is the
+     * category struct ID (e.g. <a href="https://chisel.weirdgloop.org/structs/index.html?type=structs&id=493">STRUCT #493</a>)
+     * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
+     */
+    @Getter
+    private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+
     @Getter
     @Setter
     private boolean syncAllowed;
@@ -145,7 +154,10 @@ public class CollectionLogManager {
                 return false;
             }
 
-            collectionLogItemsFromCache.addAll(parseCacheForClog());
+            CollectionLogCacheData collectionLogCacheData = parseCacheForClog();
+
+            collectionLogItemsFromCache.addAll(collectionLogCacheData.getItemIds());
+            collectionLogCategoryItemMap.putAll(collectionLogCacheData.getCategoryItems());
 
             return true;
         });
@@ -374,8 +386,14 @@ public class CollectionLogManager {
     /**
      * Parse the enums and structs in the cache to figure out which item ids exist in the collection log.
      */
-    private Set<Integer> parseCacheForClog() {
+    private CollectionLogCacheData parseCacheForClog() {
         Set<Integer> items = new HashSet<>();
+        Map<Integer, Set<Integer>> categoryItems = new HashMap<>();
+
+        // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
+        // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
+        EnumComposition replacements = client.getEnum(3721);
+
         // 2102 - Struct that contains the highest level tabs in the collection log (Bosses, Raids, etc)
         // https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2102
         int[] topLevelTabStructIds = client.getEnum(2102).getIntVals();
@@ -397,24 +415,23 @@ public class CollectionLogManager {
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
 
+                Set<Integer> itemSet = new LinkedHashSet<>();
+
                 for (int clogItemId : clogItems) {
-                    items.add(clogItemId);
+                    final int replacementId = replacements.getIntValue(clogItemId);
+
+                    itemSet.add(
+                        replacementId == -1
+                            ? clogItemId
+                            : replacementId
+                    );
                 }
+
+                items.addAll(itemSet);
+                categoryItems.put(subtabStructIndex, itemSet);
             }
         }
 
-        // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
-        // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
-        EnumComposition replacements = client.getEnum(3721);
-
-        for (int badItemId : replacements.getKeys()) {
-            items.remove(badItemId);
-        }
-
-        for (int goodItemId : replacements.getIntVals()) {
-            items.add(goodItemId);
-        }
-
-        return items;
+        return new CollectionLogCacheData(items, categoryItems);
     }
 }

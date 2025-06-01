@@ -96,7 +96,7 @@ public class CollectionLogCategoryUtils {
             Map.entry("chompy", CollectionLogCategory.chompy_bird_hunting),
             Map.entry("creature", CollectionLogCategory.creature_creation),
             Map.entry("den", CollectionLogCategory.rogues_den),
-            Map.entry("druids", CollectionLogCategory.chaos_druids),
+            Map.entry("druids", CollectionLogCategory.elder_chaos_druids),
             Map.entry("events", CollectionLogCategory.random_events),
             Map.entry("experiment", CollectionLogCategory.gloughs_experiments),
             Map.entry("glough", CollectionLogCategory.gloughs_experiments),
@@ -133,7 +133,6 @@ public class CollectionLogCategoryUtils {
             Map.entry("wars", CollectionLogCategory.castle_wars),
 
             // === Miscellaneous ===
-            Map.entry("3rd", CollectionLogCategory.third_age),
             Map.entry("misc", CollectionLogCategory.miscellaneous),
             Map.entry("pets", CollectionLogCategory.all_pets),
             Map.entry("skilling", CollectionLogCategory.skilling_pets),
@@ -158,20 +157,5 @@ public class CollectionLogCategoryUtils {
             Map.entry("tombs", CollectionLogCategory.tombs_of_amascut),
             Map.entry("tob", CollectionLogCategory.theatre_of_blood),
             Map.entry("theatre", CollectionLogCategory.theatre_of_blood)
-    );
-
-    /**
-     * Category title overrides to be used by the !col command response.
-     * Provides a better format than title-casing for categories that contain punctuation, e.g. "Kree Arra" -> "Kree'arra"
-     */
-    public static Map<CollectionLogCategory, String> CATEGORY_TITLE_OVERRIDES = Map.ofEntries(
-            Map.entry(CollectionLogCategory.kree_arra, "Kree'arra"),
-            Map.entry(CollectionLogCategory.vetion_and_calvarion, "Vet'ion and Calvar'ion"),
-            Map.entry(CollectionLogCategory.kril_tsutsaroth, "K'ril Tsutsaroth"),
-            Map.entry(CollectionLogCategory.giants_foundry, "Giants' Foundry"),
-            Map.entry(CollectionLogCategory.rogues_den, "Rogues' Den"),
-            Map.entry(CollectionLogCategory.shades_of_mortton, "Shades of Mort'ton"),
-            Map.entry(CollectionLogCategory.champions_challenge, "Champions' Challenge"),
-            Map.entry(CollectionLogCategory.gloughs_experiments, "Glough's Experiments")
     );
 }

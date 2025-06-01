@@ -6,6 +6,7 @@ import com.google.common.collect.Multisets;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.inject.Singleton;
 import java.io.File;
@@ -251,34 +252,52 @@ public class CollectionDatabase {
         }
     }
 
-    public static List<ObtainedCollectionItem> getItemsByCategory(String playerName, int categoryId) {
-        List<ObtainedCollectionItem> items = new ArrayList<>();
+    public static Set<ObtainedCollectionItem> getItemsByCategory(String playerName, Set<Integer> categoryItems) {
+        Map<Integer, ObtainedCollectionItem> items = new HashMap<>();
 
         try (Connection conn = getConnection();
              PreparedStatement ps = conn.prepareStatement(
                  String.format(
-                     "SELECT item_id, item_name, item_count, collected_date FROM %s WHERE category = ? AND player_name = ?",
-                     API_CACHE_TABLE_NAME
+                     "SELECT item_id, item_name, item_count FROM %s WHERE player_name = ? AND item_id IN (%s)",
+                     API_CACHE_TABLE_NAME,
+                     StringUtils.repeat("?", ",", categoryItems.size())
                  )
         ))
         {
-            ps.setInt(1, categoryId);
-            ps.setString(2, playerName.toLowerCase());
+            ps.setString(1, playerName.toLowerCase());
+
+            int paramIndex = 2;
+            for (int id : categoryItems)
+            {
+                ps.setInt(paramIndex, id);
+                paramIndex++;
+            }
+
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     int itemId = rs.getInt("item_id");
                     String itemName = rs.getString("item_name");
                     int count = rs.getInt("item_count");
-                    Timestamp date = rs.getTimestamp("collected_date");
 
-                    items.add(new ObtainedCollectionItem(itemId, itemName, count, date.toString()));
+                    items.put(itemId, new ObtainedCollectionItem(itemId, itemName, count));
                 }
             }
         } catch (SQLException e) {
             log.warn("Error fetching items by category: {}", e.getMessage());
         }
 
-        return items;
+        Set<ObtainedCollectionItem> sortedItems = new LinkedHashSet<>();
+        
+        // Sorts the database response to match the order found in the log tab
+        for (int itemId : categoryItems)
+        {
+            if (items.containsKey(itemId))
+            {
+                sortedItems.add(items.get(itemId));
+            }
+        }
+
+        return sortedItems;
     }
 
     public static void pruneOldPlayers(String yourUsername, int maxPlayers) {

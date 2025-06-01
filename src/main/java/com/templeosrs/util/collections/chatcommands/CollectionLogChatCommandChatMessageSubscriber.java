@@ -2,6 +2,7 @@ package com.templeosrs.util.collections.chatcommands;
 
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogCategory;
+import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.IndexedSprite;
+import net.runelite.api.StructComposition;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
@@ -56,6 +58,9 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
     @Inject
     private EventBus eventBus;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     private final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
 
@@ -101,16 +106,20 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         }
 
         String[] parts = rawMessage.substring(5).trim().split(" ", 2);
-        if (parts.length == 0)
+
+        if (parts.length == 0) {
             return;
+        }
 
         // Normalize boss name
         String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
+
         final boolean isAliasFound = CollectionLogCategoryUtils.CATEGORY_ALIASES.containsKey(bossInput);
-        CollectionLogCategory bossKey;
+
+        CollectionLogCategory category;
 
         try {
-            bossKey = isAliasFound
+            category = isAliasFound
                     ? CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput)
                     : CollectionLogCategory.valueOf(bossInput);
         } catch (IllegalArgumentException e) {
@@ -127,6 +136,8 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
             return;
         }
+
+        StructComposition categoryStruct = client.getStructComposition(category.getStructId());
 
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
@@ -152,19 +163,17 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 {
                     log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
 
-                    String errorMessage = "⚠️ Failed to fetch log for " + playerName + ".";  // Use original name here
-                    if (json != null && json.contains("Player has not synced"))
-                    {
-                        errorMessage = "⚠️ " + playerName + " has not synced their log on TempleOSRS.";  // Use original name here
-                    }
+                    final String errorMessage = json != null && json.contains("Player has not synced")
+                        ? "⚠️ " + playerName + " has not synced their log on TempleOSRS."
+                        : "⚠️ Failed to fetch log for " + playerName + ".";  // Use original name here
 
-                    final String finalMessage = errorMessage;
                     chatMessageManager.queue(
                             QueuedMessage.builder()
                                     .type(ChatMessageType.GAMEMESSAGE)
-                                    .runeLiteFormattedMessage("<col=ff6666>" + finalMessage + "</col>")
+                                    .runeLiteFormattedMessage("<col=ff6666>" + errorMessage + "</col>")
                                     .build()
                     );
+
                     return;
                 }
 
@@ -181,15 +190,16 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             }
 
             // Fetch the requested category
-            List<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(normalizedPlayerName, 0);
+            Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
+                    normalizedPlayerName,
+                    collectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId())
+            );
+
             loadItemIcons(items);
 
             StringBuilder sb = new StringBuilder();
 
-            String categoryName = CollectionLogCategoryUtils.CATEGORY_TITLE_OVERRIDES.getOrDefault(
-                    bossKey,
-                    toTitleCase(bossKey.toString().replace("_", " "))
-            );
+            String categoryName = categoryStruct.getStringValue(689);
 
             // If sender's name is same as the player being queried, omit the player's name
             if (!event.getName().equalsIgnoreCase(playerName)) {
@@ -206,27 +216,21 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             if (items.isEmpty()) {
                 sb.append("No data found.");
             } else {
-                Map<Integer, ObtainedCollectionItem> merged = new HashMap<>();
+                int i = 0;
+
                 for (ObtainedCollectionItem item : items)
                 {
-                    merged.compute(item.getId(), (id, existing) ->
-                    {
-                        if (existing == null) return item;
-//                        existing.setCount(existing.getCount() + item.getCount());
-                        return existing;
-                    });
-                }
-
-                int i = 0;
-                for (ObtainedCollectionItem item : merged.values())
-                {
                     Integer icon = itemIconIndexes.get(item.getId());
-                    if (icon != null)
-                    {
+
+                    if (icon != null) {
                         sb.append("<img=").append(icon).append("> ");
                     }
+
                     sb.append("x").append(item.getCount());
-                    if (i++ < merged.size() - 1) sb.append(", ");
+
+                    if (i++ < items.size() - 1) {
+                        sb.append(", ");
+                    }
                 }
             }
 
@@ -238,39 +242,10 @@ public class CollectionLogChatCommandChatMessageSubscriber {
     }
 
     /**
-     * Converts a string to title case, e.g. "theatre of blood" -> "Theatre of Blood"
-     * @param input The unformatted string
-     * @return The title-cased string
-     */
-    private String toTitleCase(String input) {
-        if (input == null || input.isEmpty()) return input;
-
-        Set<String> connectingWords = Set.of("and", "the", "of");
-        String[] words = input.toLowerCase().split(" ");
-        StringBuilder titleCase = new StringBuilder();
-
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                if (connectingWords.contains(word)) {
-                    titleCase.append(word);
-                } else {
-                    titleCase
-                            .append(Character.toUpperCase(word.charAt(0)))
-                            .append(word.substring(1));
-                }
-
-                titleCase.append(" ");
-            }
-        }
-
-        return titleCase.toString().trim();
-    }
-
-    /**
      * Loads the in-game icons for a given item list, ready to be used in the chat message.
      * @param items The item list for which to load item icons.
      */
-    private void loadItemIcons(List<ObtainedCollectionItem> items) {
+    private void loadItemIcons(Set<ObtainedCollectionItem> items) {
         List<ObtainedCollectionItem> newItems = new ArrayList<>();
 
         for (ObtainedCollectionItem item : items) {
@@ -280,10 +255,15 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             }
         }
 
-        if (newItems.isEmpty()) return;
+        if (newItems.isEmpty()) {
+            return;
+        }
 
         IndexedSprite[] modIcons = client.getModIcons();
-        if (modIcons == null) return;
+
+        if (modIcons == null) {
+            return;
+        }
 
         int currentLength = modIcons.length;
         int newSize = currentLength + newItems.size();
