@@ -163,7 +163,7 @@ public class CollectionLogAutoSyncManager {
                 .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
                 .forEach(pendingSyncItems::add);
 
-        uploadObtainedCollectionLogItems();
+        startSyncCountdown();
     }
 
     /**
