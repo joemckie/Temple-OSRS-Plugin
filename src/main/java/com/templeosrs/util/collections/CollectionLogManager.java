@@ -24,8 +24,6 @@
  */
 package com.templeosrs.util.collections;
 
-import com.google.common.collect.HashMultiset;
-import com.google.common.collect.Multiset;
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
@@ -240,7 +238,16 @@ public class CollectionLogManager {
 
         String username = client.getLocalPlayer().getName();
 
-        if (username == null) {
+        if (username == null)
+        {
+            return;
+        }
+
+        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
+        // This gives us quadratic backoff.
+        cyclesSinceSuccessfulCall++;
+
+        if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
             return;
         }
 
@@ -254,47 +261,16 @@ public class CollectionLogManager {
             return;
         }
 
-        // If API player data exists and the sync button hasn't been pressed, only upload the item diff
+        // If a previous Temple sync exists, the sync button hasn't been pressed,
+        // and auto-sync is enabled, upload the item diff
         // TODO: Limit how often this can occur
-
-        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
-
-        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+        if (templeOSRSPlugin.getConfig().autoSyncClog())
         {
-            final int itemId = item.getId();
-            final int itemCount = item.getCount();
-
-            collectionLogItemIdCountMap.add(itemId, itemCount);
+            collectionLogAutoSyncManager.submitPlayerDataDiff(username, obtainedCollectionLogItems);
         }
-
-        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
-
-        if (itemDiff == null || itemDiff.isEmpty()) {
-            return;
-        }
-
-        Set<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
-
-        // Add the log items found in the diff to the pending sync items set
-        obtainedCollectionLogItems
-            .stream()
-            // Name check isn't technically needed here, but it helps suppress warnings
-            .filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
-            .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
-            .forEach(pendingSyncItems::add);
-
-        collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
     }
 
     private void submitPlayerData() {
-        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
-        // This gives us quadratic backoff.
-        cyclesSinceSuccessfulCall += 1;
-
-        if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
-            return;
-        }
-
         String username = client.getLocalPlayer().getName();
 
         // Do not send if slot data wasn't generated
@@ -326,7 +302,9 @@ public class CollectionLogManager {
 
         try {
             requestManager.uploadFullCollectionLog(submission);
+
             cyclesSinceSuccessfulCall = 0;
+            syncButtonManager.setFullSyncRequested(false);
         } catch (IOException e) {
             log.error("❌ Failed to upload collection log for {}", submission.getUsername());
         }

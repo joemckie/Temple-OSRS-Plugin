@@ -1,6 +1,7 @@
 package com.templeosrs.util.collections.autosync;
 
-import com.templeosrs.util.collections.CollectionLogManager;
+import com.google.common.collect.HashMultiset;
+import com.google.common.collect.Multiset;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
@@ -22,6 +23,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 import java.util.HashSet;
+import java.util.Set;
 
 @Slf4j
 public class CollectionLogAutoSyncManager {
@@ -52,9 +54,6 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogRequestManager requestManager;
-
-    @Inject
-    private CollectionLogManager collectionLogManager;
 
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
@@ -117,7 +116,6 @@ public class CollectionLogAutoSyncManager {
         }
     }
 
-
     /**
      * Starts the sync countdown.
      * This utilises a 17-tick delay (which corresponds to a roughly 10-second wait) as a way to batch requests.
@@ -137,6 +135,35 @@ public class CollectionLogAutoSyncManager {
     public void resetSyncCountdown()
     {
         gameTickToSync = null;
+    }
+
+    public void submitPlayerDataDiff(String username, Set<ObtainedCollectionItem> obtainedCollectionLogItems)
+    {
+        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+
+        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+        {
+            final int itemId = item.getId();
+            final int itemCount = item.getCount();
+
+            collectionLogItemIdCountMap.add(itemId, itemCount);
+        }
+
+        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+
+        if (itemDiff == null || itemDiff.isEmpty()) {
+            return;
+        }
+
+        // Add the log items found in the diff to the pending sync items set
+        obtainedCollectionLogItems
+                .stream()
+                // Name check isn't technically needed here, but it helps suppress warnings
+                .filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
+                .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
+                .forEach(pendingSyncItems::add);
+
+        uploadObtainedCollectionLogItems();
     }
 
     /**
