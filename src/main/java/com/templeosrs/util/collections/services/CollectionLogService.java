@@ -10,8 +10,6 @@ import net.runelite.api.Client;
 
 import javax.inject.Inject;
 import java.sql.Timestamp;
-import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;

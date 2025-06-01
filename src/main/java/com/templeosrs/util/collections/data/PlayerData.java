@@ -29,9 +29,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -39,5 +36,4 @@ public class PlayerData
 {
     public Integer collectionLogItemCount = null;
     public String collectionLogSlots = "";
-    public Map<Integer, Integer> collectionLogCounts = new HashMap<>();
 }

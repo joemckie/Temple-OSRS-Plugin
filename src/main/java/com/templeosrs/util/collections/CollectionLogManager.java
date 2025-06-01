@@ -99,19 +99,6 @@ public class CollectionLogManager {
 
     private final Map<PlayerProfile, PlayerData> playerDataMap = new HashMap<>();
     private int cyclesSinceSuccessfulCall = 0;
-
-    /**
-     * Keeps track of what collection log slots the user has set
-     */
-    @Getter
-    protected final BitSet clogItemsBitSet = new BitSet();
-
-    /**
-     * Keeps track of the item count for each collection log item
-     */
-    @Getter
-    protected final Map<Integer, Integer> clogItemsCountSet = new HashMap<>();
-
     private int tickCollectionLogScriptFired = -1;
 
     /**
@@ -134,7 +121,7 @@ public class CollectionLogManager {
 
     @Getter
     @Setter
-    private boolean syncAllowed;
+    private boolean syncButtonPressed;
 
     public void startUp() {
         eventBus.register(this);
@@ -174,8 +161,6 @@ public class CollectionLogManager {
             collectionLogAutoSyncManager.shutDown();
         }
 
-        clogItemsBitSet.clear();
-        clogItemsCountSet.clear();
         syncButtonManager.shutDown();
     }
 
@@ -212,8 +197,6 @@ public class CollectionLogManager {
             case HOPPING:
             case LOGGING_IN:
             case CONNECTION_LOST:
-                clogItemsBitSet.clear();
-                clogItemsCountSet.clear();
                 break;
             case LOGGED_IN: {
                 // Attempt to synchronise the player's collection log on login
@@ -248,7 +231,7 @@ public class CollectionLogManager {
                 return;
             }
 
-            if (isSyncAllowed()) {
+            if (isSyncButtonPressed()) {
                 tickCollectionLogScriptFired = client.getTickCount();
             }
 
@@ -276,66 +259,64 @@ public class CollectionLogManager {
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
-
-        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
-        {
-            final int itemId = item.getId();
-            final int itemCount = item.getCount();
-
-            collectionLogItemIdCountMap.add(itemId, itemCount);
-        }
-
-        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
-
-        if (itemDiff == null) {
-            return;
-        }
-
-        // If the local data is out of sync with the current collection log, update it
-        if (!itemDiff.isEmpty()) {
-            Set<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems
-                    .stream()
-                    .filter(item -> itemDiff.contains(item.getId()))
-                    .collect(Collectors.toSet());
-
-            for (ObtainedCollectionItem item : itemsToAdd)
-            {
-                collectionLogAutoSyncManager.getPendingSyncItems().add(item);
-            }
-
-            collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
-
-            // Save the current state of the player's collection log for future diffing
-            CollectionDatabase.upsertPlayerCollectionLogItems(username, itemsToAdd);
-        }
-
-        // If sync hasn't been toggled to be allowed
-        if (!isSyncAllowed()) {
-            return;
-        }
-
         final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
 
-        // If no API player data exists, this is the first sync, so send everything.
-        if (!hasPlayerData) {
+        // If no API player data exists or if the sync button has been pressed, upload the entire log
+        if (!hasPlayerData || isSyncButtonPressed())
+        {
             PlayerData newPlayerData = getPlayerData();
             PlayerData oldPlayerData = playerDataMap.computeIfAbsent(profileKey, k -> new PlayerData());
 
             // Do not send if slot data wasn't generated
             if (newPlayerData.collectionLogSlots.isEmpty()) {
+                log.error("❌ No collection log slots have been set for {}", username);
+
                 return;
             }
 
             submitPlayerData(profileKey, newPlayerData, oldPlayerData);
+        }
+        // If API player data exists and the sync button hasn't been pressed, only upload the item diff
+        // TODO: Limit how often this can occur
+        else
+        {
+            final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+
+            for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+            {
+                final int itemId = item.getId();
+                final int itemCount = item.getCount();
+
+                collectionLogItemIdCountMap.add(itemId, itemCount);
+            }
+
+            final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+
+            if (itemDiff == null) {
+                return;
+            }
+
+            // If the local data is out of sync with the current collection log, update it
+            if (!itemDiff.isEmpty()) {
+                Set<ObtainedCollectionItem> itemsToAdd = obtainedCollectionLogItems
+                        .stream()
+                        .filter(item -> itemDiff.contains(item.getId()))
+                        .collect(Collectors.toSet());
+
+                for (ObtainedCollectionItem item : itemsToAdd)
+                {
+                    collectionLogAutoSyncManager.getPendingSyncItems().add(item);
+                }
+
+                collectionLogAutoSyncManager.uploadObtainedCollectionLogItems();
+            }
         }
     }
 
     private PlayerData getPlayerData() {
         PlayerData out = new PlayerData();
 
-        out.collectionLogSlots = Base64.getEncoder().encodeToString(clogItemsBitSet.toByteArray());
-        out.collectionLogCounts = clogItemsCountSet;
+        out.collectionLogSlots = gson.toJson(obtainedCollectionLogItems);
         out.collectionLogItemCount = collectionLogItemsFromCache.size();
 
         return out;

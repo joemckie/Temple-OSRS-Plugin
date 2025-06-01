@@ -157,24 +157,40 @@ public class CollectionDatabase {
      * @param playerName The player name associated with the response
      * @param items The items to persist to the database
      */
-    public static void insertItemsBatch(String playerName, Set<ObtainedCollectionItem> items) {
+    public static void upsertItemsBatch(String playerName, Set<ObtainedCollectionItem> items) {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
             try (PreparedStatement ps = conn.prepareStatement(
-                String.format(
-                    "INSERT INTO %s (player_name, item_id, item_count, item_name, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)",
-                    API_CACHE_TABLE_NAME
-                )
+            String.format("MERGE INTO %s USING DUAL ", API_CACHE_TABLE_NAME) +
+                "ON item_id = ? AND player_name = ? " +
+                "WHEN MATCHED THEN UPDATE SET item_count = ?, last_accessed = ? " +
+                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count, item_name, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)"
             ))
             {
                 for (ObtainedCollectionItem item : items) {
-                    ps.setString(1, playerName.toLowerCase());
-                    ps.setInt(2, item.getId());
-                    ps.setInt(3, item.getCount());
-                    ps.setString(4, item.getName());
-                    ps.setTimestamp(5, item.getDate());
-                    ps.setTimestamp(6, new Timestamp(System.currentTimeMillis()));
+                    final int itemId = item.getId();
+                    final int itemCount = item.getCount();
+                    final Timestamp collectedDate = item.getDate();
+                    final String lowerPlayerName = playerName.toLowerCase();
+                    final Timestamp lastAccessed = new Timestamp(System.currentTimeMillis());
+
+                    ps.setInt(1, itemId);
+                    ps.setInt(6, itemId);
+
+                    ps.setInt(3, itemCount);
+                    ps.setInt(7, itemCount);
+
+                    ps.setString(2, lowerPlayerName);
+                    ps.setString(5, lowerPlayerName);
+
+                    ps.setString(8, item.getName());
+
+                    ps.setTimestamp(9, collectedDate);
+
+                    ps.setTimestamp(4, lastAccessed);
+                    ps.setTimestamp(10, lastAccessed);
+
                     ps.addBatch();
                 }
 
@@ -287,7 +303,7 @@ public class CollectionDatabase {
         }
 
         Set<ObtainedCollectionItem> sortedItems = new LinkedHashSet<>();
-        
+
         // Sorts the database response to match the order found in the log tab
         for (int itemId : categoryItems)
         {

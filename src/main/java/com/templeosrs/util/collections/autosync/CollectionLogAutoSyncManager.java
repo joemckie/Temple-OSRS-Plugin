@@ -4,6 +4,7 @@ import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
+import com.templeosrs.util.collections.database.CollectionDatabase;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Synchronized;
@@ -112,8 +113,6 @@ public class CollectionLogAutoSyncManager {
                 client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Back", null);
 
                 setTriggerSyncAllowed(false);
-
-                collectionLogManager.setSyncAllowed(true);
             });
         }
     }
@@ -160,6 +159,9 @@ public class CollectionLogAutoSyncManager {
 
         try {
             requestManager.uploadObtainedCollectionLogItems(submission);
+
+            // Save the current state of the player's collection log for future diffing
+            CollectionDatabase.upsertPlayerCollectionLogItems(username, pendingSyncItems);
             
             obtainedItemNames.clear();
             pendingSyncItems.clear();

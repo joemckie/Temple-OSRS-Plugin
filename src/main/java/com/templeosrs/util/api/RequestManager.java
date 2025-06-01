@@ -65,15 +65,13 @@ public class RequestManager {
     private String doRequest(Request request) throws IOException {
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
-                log.warn("❌ HTTP error fetching {}: {}", request.url(), response.code());
-
-                return null;
+                throw new IOException(String.format("HTTP error fetching %s: %s", request.url(), response.code()));
             }
 
             String body = Objects.requireNonNull(response.body()).string();
 
             if (body.isEmpty()) {
-                log.warn("❌ Empty response body was returned from {}", request.url());
+                throw new IOException(String.format("Empty response body was returned from %s", request.url()));
             }
 
             return body;

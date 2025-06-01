@@ -114,7 +114,7 @@ public class CollectionParser {
 
         int itemCount = items.size();
 
-        CollectionDatabase.insertItemsBatch(username, items);
+        CollectionDatabase.upsertItemsBatch(username, items);
 
         log.debug("✅ Parsed and inserted {} items total for {}.", itemCount, username);
 
