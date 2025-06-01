@@ -257,7 +257,7 @@ public class CollectionLogManager {
 
     @Synchronized
     public void submitTask() {
-        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
+        // If ticksSinceSuccessfulCall is not a perfect square, we should not try to submit.
         // This gives us quadratic backoff.
         ticksSinceSuccessfulCall++;
 
