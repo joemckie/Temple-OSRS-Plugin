@@ -33,6 +33,7 @@ import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -43,6 +44,7 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
+import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -89,8 +91,16 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
-    private int cyclesSinceSuccessfulCall = 0;
-    private int tickCollectionLogScriptFired = -1;
+    private int ticksSinceSuccessfulCall = 0;
+
+    @Nullable
+    static private Integer gameTickToSync;
+
+    @Getter
+    @Setter
+    static private boolean submitting = false;
+
+    private int syncRequestAttempts = 0;
 
     /**
      * List of items found in the collection log, computed by reading the in-game enums/structs.
@@ -165,12 +175,25 @@ public class CollectionLogManager {
         }
     }
 
+    public void clearRequestBackoff()
+    {
+        gameTickToSync = null;
+        ticksSinceSuccessfulCall = 0;
+        syncRequestAttempts = 0;
+    }
+
     @Subscribe
     public void onGameTick(GameTick gameTick) {
-        // Submit the collection log data two ticks after the first script prefires
-        if (tickCollectionLogScriptFired != -1 && tickCollectionLogScriptFired + 2 < client.getTickCount())
-        {
-            tickCollectionLogScriptFired = -1;
+        if (!isSubmitting() && gameTickToSync != null && client.getTickCount() >= gameTickToSync) {
+            final int maxRetriesAllowed = 3;
+
+            if (syncRequestAttempts == maxRetriesAllowed) {
+                clearRequestBackoff();
+                log.error("❌ Maximum number of retries reached; aborting sync!");
+                return;
+            }
+
+            setSubmitting(true);
             scheduledExecutorService.execute(this::submitTask);
         }
     }
@@ -218,7 +241,10 @@ public class CollectionLogManager {
                 return;
             }
 
-            tickCollectionLogScriptFired = client.getTickCount();
+            // Submit the collection log data three ticks after the first script prefires
+            // This gives the game time to build the obtained items set and resolves an issue
+            // that caused players with large logs to miss items in their sync data
+            gameTickToSync = client.getTickCount() + 3;
 
             Object[] args = preFired.getScriptEvent().getArguments();
             int itemId = (int) args[1];
@@ -231,27 +257,32 @@ public class CollectionLogManager {
 
     @Synchronized
     public void submitTask() {
+        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
+        // This gives us quadratic backoff.
+        ticksSinceSuccessfulCall++;
+
+        log.debug("cycles: {}", ticksSinceSuccessfulCall);
+
+        if (Math.pow((int) Math.sqrt(ticksSinceSuccessfulCall), 2) != ticksSinceSuccessfulCall) {
+            setSubmitting(false);
+
+            log.info("⚠️ Skipping request due to exponential backoff configuration");
+
+            return;
+        }
+
         // TODO: do we want other GameStates?
-        if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer() == null) {
+        if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer().getName() == null) {
+            log.error("⚠️ Aborting sync as the player is no longer logged in");
+
             return;
         }
 
         String username = client.getLocalPlayer().getName();
 
-        if (username == null)
-        {
-            return;
-        }
-
-        // If cyclesSinceSuccessfulCall is not a perfect square, we should not try to submit.
-        // This gives us quadratic backoff.
-        cyclesSinceSuccessfulCall++;
-
-        if (Math.pow((int) Math.sqrt(cyclesSinceSuccessfulCall), 2) != cyclesSinceSuccessfulCall) {
-            return;
-        }
-
         final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
+
+        syncRequestAttempts++;
 
         // If no API player data exists or if the sync button has been pressed, upload the entire log
         if (!hasPlayerData || syncButtonManager.isFullSyncRequested())
@@ -303,10 +334,12 @@ public class CollectionLogManager {
         try {
             requestManager.uploadFullCollectionLog(submission);
 
-            cyclesSinceSuccessfulCall = 0;
+            clearRequestBackoff();
             syncButtonManager.setFullSyncRequested(false);
         } catch (IOException e) {
             log.error("❌ Failed to upload collection log for {}", submission.getUsername());
+        } finally {
+            setSubmitting(false);
         }
     }
 

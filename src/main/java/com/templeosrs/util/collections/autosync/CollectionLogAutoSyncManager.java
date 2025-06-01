@@ -2,6 +2,7 @@ package com.templeosrs.util.collections.autosync;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
+import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
@@ -54,6 +55,9 @@ public class CollectionLogAutoSyncManager {
 
     @Inject
     private CollectionLogRequestManager requestManager;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
@@ -189,11 +193,14 @@ public class CollectionLogAutoSyncManager {
 
             // Save the current state of the player's collection log for future diffing
             CollectionDatabase.upsertPlayerCollectionLogItems(username, pendingSyncItems);
-            
+
             obtainedItemNames.clear();
             pendingSyncItems.clear();
+            collectionLogManager.clearRequestBackoff();
         } catch (Exception e) {
             log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
+        } finally {
+            CollectionLogManager.setSubmitting(false);
         }
     }
 }
