@@ -62,7 +62,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
     void addsToPendingItemsWhenInventoryItemsMatchObtainedItems()
     {
         final Item[] mockItems = {
-                new Item(ItemID.TWISTED_BOW, 1)
+                new Item(ItemID.TWISTED_BOW, 42)
         };
 
         ItemContainerChanged itemContainerChanged = buildItemContainerChangedEvent(
@@ -75,7 +75,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriberTest extends Moc
         eventBus.post(itemContainerChanged);
 
         HashSet<ObtainedCollectionItem> expectedHashSet = new HashSet<>();
-        expectedHashSet.add(new ObtainedCollectionItem(ItemID.TWISTED_BOW, "Twisted bow", 1));
+        expectedHashSet.add(new ObtainedCollectionItem(ItemID.TWISTED_BOW, "Twisted bow", 42));
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }

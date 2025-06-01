@@ -90,14 +90,14 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriberTest extends MockedCo
 
         NpcLootReceived npcLootReceived = buildNpcLootReceivedEvent(
                 new ItemStack[]{
-                        new ItemStack(ItemID.TWISTED_BOW, 1)
+                        new ItemStack(ItemID.TWISTED_BOW, 42)
                 }
         );
 
         eventBus.post(npcLootReceived);
 
         final HashSet<ObtainedCollectionItem> expectedHashSet = new HashSet<>();
-        expectedHashSet.add(new ObtainedCollectionItem(ItemID.TWISTED_BOW, "Twisted bow", 1));
+        expectedHashSet.add(new ObtainedCollectionItem(ItemID.TWISTED_BOW, "Twisted bow", 42));
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }
