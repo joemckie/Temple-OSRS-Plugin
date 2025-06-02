@@ -2,6 +2,7 @@ package com.templeosrs.util.collections.autosync;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
+import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
@@ -177,6 +178,12 @@ public class CollectionLogAutoSyncManager {
     @Synchronized
     public void uploadObtainedCollectionLogItems()
     {
+        QuadraticBackoffStrategy backoffStrategy = collectionLogManager.getBackoffStrategy();
+
+        if (backoffStrategy.shouldSkipRequest()) {
+            return;
+        }
+
         String username = client.getLocalPlayer().getName();
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
@@ -196,11 +203,11 @@ public class CollectionLogAutoSyncManager {
 
             obtainedItemNames.clear();
             pendingSyncItems.clear();
-            collectionLogManager.clearRequestBackoff();
+            gameTickToSync = null;
         } catch (Exception e) {
             log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
         } finally {
-            CollectionLogManager.setSubmitting(false);
+            backoffStrategy.finishCycle();
         }
     }
 }

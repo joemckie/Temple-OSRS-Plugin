@@ -1,11 +1,12 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.util.api.QuadraticBackoffStrategy;
+import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.HashSet;
@@ -16,6 +17,9 @@ public class CollectionLogAutoSyncGameTickSubscriber
 {
     @Inject
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     @Inject
     private Client client;
@@ -31,6 +35,13 @@ public class CollectionLogAutoSyncGameTickSubscriber
     @Subscribe
     public void onGameTick(GameTick gameTick)
     {
+        QuadraticBackoffStrategy backoffStrategy = collectionLogManager.getBackoffStrategy();
+
+        if (backoffStrategy.isRequestLimitReached()) {
+            collectionLogAutoSyncManager.resetSyncCountdown();
+            return;
+        }
+
         final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
         final HashSet<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
 
@@ -41,7 +52,7 @@ public class CollectionLogAutoSyncGameTickSubscriber
         }
 
         // Sync new collection log items when the game has reached correct tick.
-        if (client.getTickCount() >= gameTickToSync) {
+        if (!backoffStrategy.isSubmitting() && client.getTickCount() >= gameTickToSync) {
             collectionLogAutoSyncManager.resetSyncCountdown();
             scheduledExecutorService.execute(collectionLogAutoSyncManager::uploadObtainedCollectionLogItems);
         }

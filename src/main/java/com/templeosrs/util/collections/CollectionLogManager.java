@@ -26,6 +26,7 @@ package com.templeosrs.util.collections;
 
 import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
+import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
 import com.templeosrs.util.collections.data.*;
@@ -33,7 +34,6 @@ import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
-import lombok.Setter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -91,16 +91,8 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
-    private int ticksSinceSuccessfulCall = 0;
-
     @Nullable
-    static private Integer gameTickToSync;
-
-    @Getter
-    @Setter
-    static private boolean submitting = false;
-
-    private int syncRequestAttempts = 0;
+    private Integer gameTickToSync;
 
     /**
      * List of items found in the collection log, computed by reading the in-game enums/structs.
@@ -119,6 +111,9 @@ public class CollectionLogManager {
      */
     @Getter
     private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+
+    @Getter
+    private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
 
     public void startUp() {
         eventBus.register(this);
@@ -175,25 +170,15 @@ public class CollectionLogManager {
         }
     }
 
-    public void clearRequestBackoff()
-    {
-        gameTickToSync = null;
-        ticksSinceSuccessfulCall = 0;
-        syncRequestAttempts = 0;
-    }
-
     @Subscribe
     public void onGameTick(GameTick gameTick) {
-        if (!isSubmitting() && gameTickToSync != null && client.getTickCount() >= gameTickToSync) {
-            final int maxRetriesAllowed = 3;
+        if (backoffStrategy.isRequestLimitReached()) {
+            gameTickToSync = null;
 
-            if (syncRequestAttempts == maxRetriesAllowed) {
-                clearRequestBackoff();
-                log.error("❌ Maximum number of retries reached; aborting sync!");
-                return;
-            }
+            return;
+        }
 
-            setSubmitting(true);
+        if (!backoffStrategy.isSubmitting() && gameTickToSync != null && client.getTickCount() >= gameTickToSync) {
             scheduledExecutorService.execute(this::submitTask);
         }
     }
@@ -257,18 +242,6 @@ public class CollectionLogManager {
 
     @Synchronized
     public void submitTask() {
-        // If ticksSinceSuccessfulCall is not a perfect square, we should not try to submit.
-        // This gives us quadratic backoff.
-        ticksSinceSuccessfulCall++;
-
-        if (Math.pow((int) Math.sqrt(ticksSinceSuccessfulCall), 2) != ticksSinceSuccessfulCall) {
-            setSubmitting(false);
-
-            log.info("⚠️ Skipping request due to exponential backoff configuration");
-
-            return;
-        }
-
         // TODO: do we want other GameStates?
         if (client.getGameState() != GameState.LOGGED_IN || client.getLocalPlayer().getName() == null) {
             log.error("⚠️ Aborting sync as the player is no longer logged in");
@@ -276,11 +249,13 @@ public class CollectionLogManager {
             return;
         }
 
+        if (backoffStrategy.shouldSkipRequest()) {
+            return;
+        }
+
         String username = client.getLocalPlayer().getName();
 
         final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
-
-        syncRequestAttempts++;
 
         // If no API player data exists or if the sync button has been pressed, upload the entire log
         if (!hasPlayerData || syncButtonManager.isFullSyncRequested())
@@ -331,13 +306,12 @@ public class CollectionLogManager {
 
         try {
             requestManager.uploadFullCollectionLog(submission);
-
-            clearRequestBackoff();
             syncButtonManager.setFullSyncRequested(false);
+            gameTickToSync = null;
         } catch (IOException e) {
             log.error("❌ Failed to upload collection log for {}", submission.getUsername());
         } finally {
-            setSubmitting(false);
+            backoffStrategy.finishCycle();
         }
     }
 

@@ -2,6 +2,7 @@ package com.templeosrs.util.api;
 
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.callback.ClientThread;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -9,17 +10,17 @@ import javax.inject.Inject;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ScheduledExecutorService;
 
 import static net.runelite.http.api.RuneLiteAPI.JSON;
 
 @Slf4j
 public class RequestManager {
     @Inject
-    private Gson gson;
+    OkHttpClient okHttpClient;
 
     @Inject
-    private OkHttpClient okHttpClient;
+    private Gson gson;
 
     protected final String scheme = "https";
 

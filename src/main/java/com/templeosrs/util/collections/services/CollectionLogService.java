@@ -71,13 +71,7 @@ public class CollectionLogService {
 
             log.debug("🧩 Parsing and storing JSON...");
 
-            final String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(username);
-            final Set<ObtainedCollectionItem> items = collectionParser.parse(
-                    normalizedPlayerName,
-                    json
-            );
-
-            collectionParser.store(normalizedPlayerName, items);
+            collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(username), json);
 
             log.debug("✅ Parsing complete.");
         });
