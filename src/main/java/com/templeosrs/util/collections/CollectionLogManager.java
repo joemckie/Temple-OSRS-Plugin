@@ -155,6 +155,10 @@ public class CollectionLogManager {
         }
 
         syncButtonManager.shutDown();
+
+        obtainedCollectionLogItems.clear();
+        collectionLogItemsFromCache.clear();
+        collectionLogCategoryItemMap.clear();
     }
 
     @Subscribe

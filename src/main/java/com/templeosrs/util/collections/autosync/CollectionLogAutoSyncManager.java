@@ -17,7 +17,6 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
@@ -29,8 +28,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Slf4j
-public class CollectionLogAutoSyncManager {
-
+public class CollectionLogAutoSyncManager
+{
     @Inject
     private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
 
@@ -74,10 +73,6 @@ public class CollectionLogAutoSyncManager {
 
     @Getter
     @Setter
-    private boolean syncAllowed;
-
-    @Getter
-    @Setter
     private boolean logOpenAutoSync;
 
     @Getter
@@ -115,6 +110,9 @@ public class CollectionLogAutoSyncManager {
         eventBus.unregister(collectionLogAutoSyncConfigChecker);
 
         collectionLogAutoSyncConfigChecker.shutDown();
+
+        obtainedItemNames.clear();
+        clearSyncCountdown();
     }
 
     @Subscribe
@@ -156,8 +154,9 @@ public class CollectionLogAutoSyncManager {
      * Resets the sync countdown.
      * Used after the request has successfully completed.
      */
-    public void resetSyncCountdown()
+    public void clearSyncCountdown()
     {
+        backoffStrategy.reset();
         setLogOpenAutoSync(false);
         gameTickToSync = null;
     }
@@ -178,8 +177,6 @@ public class CollectionLogAutoSyncManager {
 
             Set<ObtainedCollectionItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
 
-            obtainedCollectionLogItems.add(new ObtainedCollectionItem(ItemID.ABYSSAL_WHIP, "Abyssal whip", 100));
-
             final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
             for (ObtainedCollectionItem item : obtainedCollectionLogItems)
@@ -196,7 +193,7 @@ public class CollectionLogAutoSyncManager {
                 log.debug("No log items have been changed since the last sync for {}", username);
 
                 // No items to sync, stop processing
-                resetSyncCountdown();
+                clearSyncCountdown();
 
                 return;
             }
@@ -246,8 +243,7 @@ public class CollectionLogAutoSyncManager {
             obtainedItemNames.clear();
             pendingSyncItems.clear();
 
-            resetSyncCountdown();
-            backoffStrategy.reset();
+            clearSyncCountdown();
 
             log.debug("Successfully synchronised new log items for {}", submission.getUsername());
         } catch (Exception e) {

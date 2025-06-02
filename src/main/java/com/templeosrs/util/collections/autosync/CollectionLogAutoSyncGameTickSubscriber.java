@@ -38,7 +38,7 @@ public class CollectionLogAutoSyncGameTickSubscriber
         QuadraticBackoffStrategy backoffStrategy = collectionLogAutoSyncManager.getBackoffStrategy();
 
         if (backoffStrategy.isRequestLimitReached()) {
-            collectionLogAutoSyncManager.resetSyncCountdown();
+            collectionLogAutoSyncManager.clearSyncCountdown();
             return;
         }
 
