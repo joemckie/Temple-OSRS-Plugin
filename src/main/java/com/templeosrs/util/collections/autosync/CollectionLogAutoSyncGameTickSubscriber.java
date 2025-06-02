@@ -35,25 +35,40 @@ public class CollectionLogAutoSyncGameTickSubscriber
     @Subscribe
     public void onGameTick(GameTick gameTick)
     {
-        QuadraticBackoffStrategy backoffStrategy = collectionLogManager.getBackoffStrategy();
+        QuadraticBackoffStrategy backoffStrategy = collectionLogAutoSyncManager.getBackoffStrategy();
 
         if (backoffStrategy.isRequestLimitReached()) {
             collectionLogAutoSyncManager.resetSyncCountdown();
             return;
         }
 
+        if (backoffStrategy.isSubmitting() || collectionLogAutoSyncManager.isComputingDiff()) {
+            return;
+        }
+
         final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
         final HashSet<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
 
-        // Note: There shouldn't be an instance of gameTickToSync
-        // being non-null without items in the pendingSyncItems set.
+        // Add any diffed items to the pendingSync list when the log has been opened
+        if (
+            gameTickToSync != null &&
+            client.getTickCount() >= gameTickToSync &&
+            collectionLogAutoSyncManager.isLogOpenAutoSync() &&
+            pendingSyncItems.isEmpty()
+        ) {
+            collectionLogAutoSyncManager.setComputingDiff(true);
+            scheduledExecutorService.execute(collectionLogAutoSyncManager::computeCollectionLogDiff);
+
+            return;
+        }
+
         if (gameTickToSync == null || pendingSyncItems.isEmpty()) {
             return;
         }
 
         // Sync new collection log items when the game has reached correct tick.
-        if (!backoffStrategy.isSubmitting() && client.getTickCount() >= gameTickToSync) {
-            collectionLogAutoSyncManager.resetSyncCountdown();
+        if (client.getTickCount() >= gameTickToSync) {
+            backoffStrategy.setSubmitting(true);
             scheduledExecutorService.execute(collectionLogAutoSyncManager::uploadObtainedCollectionLogItems);
         }
     }

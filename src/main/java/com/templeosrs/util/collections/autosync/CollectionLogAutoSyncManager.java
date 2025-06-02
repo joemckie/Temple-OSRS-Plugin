@@ -17,6 +17,7 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
@@ -71,6 +72,21 @@ public class CollectionLogAutoSyncManager {
     @Setter
     private boolean triggerSyncAllowed;
 
+    @Getter
+    @Setter
+    private boolean syncAllowed;
+
+    @Getter
+    @Setter
+    private boolean logOpenAutoSync;
+
+    @Getter
+    @Setter
+    private boolean computingDiff;
+
+    @Getter
+    QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
+
     /**
      * Keeps track of what item IDs are pending a server sync
      */
@@ -105,6 +121,7 @@ public class CollectionLogAutoSyncManager {
     public void onWidgetLoaded(WidgetLoaded widgetLoaded)
     {
         if (widgetLoaded.getGroupId() == InterfaceID.COLLECTION) {
+            setLogOpenAutoSync(true);
             setTriggerSyncAllowed(true);
         }
     }
@@ -117,6 +134,8 @@ public class CollectionLogAutoSyncManager {
                 client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Back", null);
 
                 setTriggerSyncAllowed(false);
+
+                gameTickToSync = client.getTickCount() + 3;
             });
         }
     }
@@ -139,36 +158,61 @@ public class CollectionLogAutoSyncManager {
      */
     public void resetSyncCountdown()
     {
+        setLogOpenAutoSync(false);
         gameTickToSync = null;
     }
 
-    public void submitPlayerDataDiff(String username, Set<ObtainedCollectionItem> obtainedCollectionLogItems)
+    public void computeCollectionLogDiff()
     {
-        final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+        try {
+            String username = client.getLocalPlayer().getName();
 
-        for (ObtainedCollectionItem item : obtainedCollectionLogItems)
-        {
-            final int itemId = item.getId();
-            final int itemCount = item.getCount();
+            if (username == null || !CollectionDatabase.hasPlayerData(username))
+            {
+                log.debug("No saved log items were found, falling back to a full sync for {}", username);
 
-            collectionLogItemIdCountMap.add(itemId, itemCount);
-        }
+                return;
+            }
 
-        final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+            log.debug("Computing collection log diff for {}", username);
 
-        if (itemDiff == null || itemDiff.isEmpty()) {
-            return;
-        }
+            Set<ObtainedCollectionItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
 
-        // Add the log items found in the diff to the pending sync items set
-        obtainedCollectionLogItems
+            obtainedCollectionLogItems.add(new ObtainedCollectionItem(ItemID.ABYSSAL_WHIP, "Abyssal whip", 100));
+
+            final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+
+            for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+            {
+                final int itemId = item.getId();
+                final int itemCount = item.getCount();
+
+                collectionLogItemIdCountMap.add(itemId, itemCount);
+            }
+
+            final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+
+            if (itemDiff == null || itemDiff.isEmpty()) {
+                log.debug("No log items have been changed since the last sync for {}", username);
+
+                // No items to sync, stop processing
+                resetSyncCountdown();
+
+                return;
+            }
+
+            log.debug("Found {} changed log item(s) since the last sync", itemDiff.elementSet().size());
+
+            // Add the log items found in the diff to the pending sync items set
+            obtainedCollectionLogItems
                 .stream()
                 // Name check isn't technically needed here, but it helps suppress warnings
                 .filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
                 .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
                 .forEach(pendingSyncItems::add);
-
-        startSyncCountdown();
+        } finally {
+            setComputingDiff(false);
+        }
     }
 
     /**
@@ -178,8 +222,6 @@ public class CollectionLogAutoSyncManager {
     @Synchronized
     public void uploadObtainedCollectionLogItems()
     {
-        QuadraticBackoffStrategy backoffStrategy = collectionLogManager.getBackoffStrategy();
-
         if (backoffStrategy.shouldSkipRequest()) {
             return;
         }
@@ -203,7 +245,11 @@ public class CollectionLogAutoSyncManager {
 
             obtainedItemNames.clear();
             pendingSyncItems.clear();
-            gameTickToSync = null;
+
+            resetSyncCountdown();
+            backoffStrategy.reset();
+
+            log.debug("Successfully synchronised new log items for {}", submission.getUsername());
         } catch (Exception e) {
             log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
         } finally {

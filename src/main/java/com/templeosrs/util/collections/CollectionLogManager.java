@@ -102,6 +102,7 @@ public class CollectionLogManager {
     /**
      * Unique list of all obtained collection log items
      */
+    @Getter
     private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
 
     /**
@@ -179,6 +180,7 @@ public class CollectionLogManager {
         }
 
         if (!backoffStrategy.isSubmitting() && gameTickToSync != null && client.getTickCount() >= gameTickToSync) {
+            backoffStrategy.setSubmitting(true);
             scheduledExecutorService.execute(this::submitTask);
         }
     }
@@ -257,21 +259,16 @@ public class CollectionLogManager {
 
         final boolean hasPlayerData = CollectionDatabase.hasPlayerData(username);
 
-        // If no API player data exists or if the sync button has been pressed, upload the entire log
-        if (!hasPlayerData || syncButtonManager.isFullSyncRequested())
+        if (hasPlayerData && !syncButtonManager.isFullSyncRequested())
         {
-            submitPlayerData();
+            backoffStrategy.reset();
+            gameTickToSync = null;
 
             return;
         }
 
-        // If a previous Temple sync exists, the sync button hasn't been pressed,
-        // and auto-sync is enabled, upload the item diff
-        // TODO: Limit how often this can occur
-        if (templeOSRSPlugin.getConfig().autoSyncClog())
-        {
-            collectionLogAutoSyncManager.submitPlayerDataDiff(username, obtainedCollectionLogItems);
-        }
+        // If no API player data exists or if the sync button has been pressed, upload the entire log
+        submitPlayerData();
     }
 
     private void submitPlayerData() {
@@ -280,6 +277,9 @@ public class CollectionLogManager {
         // Do not send if slot data wasn't generated
         if (obtainedCollectionLogItems.isEmpty()) {
             log.error("❌ No obtained items have been set for {}", username);
+
+            gameTickToSync = null;
+            backoffStrategy.reset();
 
             return;
         }
@@ -308,6 +308,8 @@ public class CollectionLogManager {
             requestManager.uploadFullCollectionLog(submission);
             syncButtonManager.setFullSyncRequested(false);
             gameTickToSync = null;
+
+            log.debug("Successfully submitted collection log for {}", submission.getUsername());
         } catch (IOException e) {
             log.error("❌ Failed to upload collection log for {}", submission.getUsername());
         } finally {

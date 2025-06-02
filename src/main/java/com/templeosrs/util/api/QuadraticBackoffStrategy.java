@@ -15,6 +15,7 @@ public class QuadraticBackoffStrategy {
 
     public void reset()
     {
+        submitting = false;
         requestAttemptCount = 0;
         cycleCount = 0;
     }
