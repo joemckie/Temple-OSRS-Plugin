@@ -121,6 +121,9 @@ public class CollectionLogAutoSyncManager
         if (widgetLoaded.getGroupId() == InterfaceID.COLLECTION) {
             setLogOpenAutoSync(true);
             setTriggerSyncAllowed(true);
+
+            // Clear the previously obtained item list to avoid duplicating items when counts change
+            collectionLogManager.getObtainedCollectionLogItems().clear();
         }
     }
 
@@ -198,7 +201,7 @@ public class CollectionLogAutoSyncManager
                 return;
             }
 
-            log.debug("Found {} changed log item(s) since the last sync", itemDiff.elementSet().size());
+            log.debug("Found {} changed log item(s) since the last sync: {}", itemDiff.elementSet().size(), itemDiff);
 
             // Add the log items found in the diff to the pending sync items set
             obtainedCollectionLogItems

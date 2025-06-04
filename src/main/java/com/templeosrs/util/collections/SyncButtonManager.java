@@ -138,9 +138,13 @@ public class SyncButtonManager {
             client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Last update within 30 seconds. You can update again in " + round((lastAttemptedUpdate + 50 - client.getTickCount()) * 0.6) + " seconds.", "TempleOSRS");
             return;
         }
+
         lastAttemptedUpdate = client.getTickCount();
 
         setFullSyncRequested(true);
+
+        // Clear the previously obtained item list to avoid duplicating items when counts change
+        collectionLogManager.getObtainedCollectionLogItems().clear();
 
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
