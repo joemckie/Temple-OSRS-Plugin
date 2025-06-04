@@ -3,6 +3,8 @@ package com.templeosrs.util.collections.data;
 import com.google.gson.annotations.SerializedName;
 import lombok.Value;
 
+import javax.annotation.Nullable;
+
 @Value
 public class CollectionLogSyncResponse {
     @Value
@@ -25,6 +27,6 @@ public class CollectionLogSyncResponse {
         }
     }
 
-    Data data;
-    Error error;
+    @Nullable Data data;
+    @Nullable Error error;
 }
