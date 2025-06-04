@@ -25,21 +25,22 @@ public class CollectionLogRequestManager extends RequestManager {
      * Used by the auto-sync feature to automatically synchronise the collection log.
      *
      * @param data The data to be uploaded.
+     * @return The API response data
      */
-    public void uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data) throws IOException {
+    public String uploadObtainedCollectionLogItems(@NotNull PlayerDataSync data) throws IOException {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
                 .addPathSegments("api/collection-log/sync_new_collections.php")
                 .build();
 
-        post(url, data);
+        return post(url, data);
     }
 
     /**
      * Uploads the full collection log to the server.
      * Triggered by the Collection Log Sync button.
-     * 
+     *
      * @param data The data to be uploaded.
      */
     public void uploadFullCollectionLog(@NotNull PlayerDataSubmission data) throws IOException {

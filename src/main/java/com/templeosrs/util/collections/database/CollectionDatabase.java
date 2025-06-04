@@ -19,8 +19,8 @@ import java.util.*;
 public class CollectionDatabase {
     private static final String DB_URL = "jdbc:h2:file:" + RuneLite.RUNELITE_DIR + "/templeosrs/runelite-collections;AUTO_SERVER=TRUE;DB_CLOSE_DELAY=-1";
 
-    private static final String PLAYER_COLLECTION_LOG_TABLE = "player_collection_log";
-    private static final String API_CACHE_TABLE_NAME = "api_cache";
+    private static final String COLLECTION_LOG_CACHE_TABLE_NAME = "collection_log_cache";
+    private static final String PLAYER_METADATA_TABLE_NAME = "player_metadata";
 
     static {
         File pluginDir = new File(RuneLite.RUNELITE_DIR, "templeosrs");
@@ -41,7 +41,7 @@ public class CollectionDatabase {
             Class.forName("org.h2.Driver");
 
             try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
-                final String createPlayerCollectionLogTableSql = String.format(
+                final String createCollectionLogCacheTableSql = String.format(
                         "CREATE TABLE IF NOT EXISTS %s(" +
                                 "id IDENTITY PRIMARY KEY, " +
                                 "item_id INT, " +
@@ -49,24 +49,21 @@ public class CollectionDatabase {
                                 "item_count INT, " +
                                 "player_name VARCHAR(255)" +
                         ")",
-                        PLAYER_COLLECTION_LOG_TABLE
+                        COLLECTION_LOG_CACHE_TABLE_NAME
                 );
 
-                final String createApiCacheTableSql = String.format(
+                final String createPlayerMetadataTableSql = String.format(
                         "CREATE TABLE IF NOT EXISTS %s(" +
                                 "id IDENTITY PRIMARY KEY, " +
-                                "item_id INT, " +
-                                "item_name VARCHAR(255), " +
-                                "item_count INT, " +
                                 "player_name VARCHAR(255), " +
-                                "collected_date TIMESTAMP, " +
+                                "last_changed TIMESTAMP, " +
                                 "last_accessed TIMESTAMP" +
                         ")",
-                        API_CACHE_TABLE_NAME
+                        PLAYER_METADATA_TABLE_NAME
                 );
 
-                stmt.executeUpdate(createPlayerCollectionLogTableSql);
-                stmt.executeUpdate(createApiCacheTableSql);
+                stmt.executeUpdate(createCollectionLogCacheTableSql);
+                stmt.executeUpdate(createPlayerMetadataTableSql);
             }
         } catch (ClassNotFoundException e) {
             log.warn("H2 Driver class not found: {}", e.getMessage());
@@ -91,7 +88,7 @@ public class CollectionDatabase {
     }
 
     public static boolean hasPlayerData(String playerName) {
-        String sql = String.format("SELECT 1 FROM %s WHERE player_name = ? LIMIT 1", API_CACHE_TABLE_NAME);
+        String sql = String.format("SELECT 1 FROM %s WHERE player_name = ? LIMIT 1", COLLECTION_LOG_CACHE_TABLE_NAME);
 
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerName.toLowerCase());
@@ -104,98 +101,60 @@ public class CollectionDatabase {
     }
 
     /**
-     * Saves the current player's collection log to the Player Collection Log table.
-     * Note: this differs from the API cache data as it is designed to replicate the in-game log
-     * i.e. it only saves item IDs and their counts.
-     * It is primarily used to compute a diff of items to enable the auto-sync functionality.
-     *
-     * @param playerName The player name associated with the data.
-     * @param items The item set to persist to the database.
-     */
-    // TODO: Delete items that are no longer in the collection log (in cases of rollbacks)
-    public static void upsertPlayerCollectionLogItems(String playerName, Set<ObtainedCollectionItem> items)
-    {
-        try (Connection conn = getConnection()) {
-            conn.setAutoCommit(false);
-
-            try (PreparedStatement ps = conn.prepareStatement(
-            String.format("MERGE INTO %s USING DUAL ", PLAYER_COLLECTION_LOG_TABLE) +
-                "ON item_id = ? AND player_name = ? " +
-                "WHEN MATCHED THEN UPDATE SET item_count = ? " +
-                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count, item_name) VALUES (?, ?, ?, ?)"
-            ))
-            {
-                for (ObtainedCollectionItem item : items) {
-                    final int itemId = item.getId();
-                    final int itemCount = item.getCount();
-                    final String lowerPlayerName = playerName.toLowerCase();
-
-                    ps.setInt(1, itemId);
-                    ps.setInt(5, itemId);
-
-                    ps.setInt(3, itemCount);
-                    ps.setInt(6, itemCount);
-
-                    ps.setString(2, lowerPlayerName);
-                    ps.setString(4, lowerPlayerName);
-
-                    ps.setString(7, item.getName());
-
-                    ps.addBatch();
-                }
-
-                ps.executeBatch();
-            }
-
-            conn.commit();
-        } catch (SQLException e) {
-            log.warn("Error inserting items from game data: {}", e.getMessage());
-        }
-    }
-
-    /**
      * Saves the API response data to the API cache table
      * @param playerName The player name associated with the response
      * @param items The items to persist to the database
      */
-    public static void upsertItemsBatch(String playerName, Set<ObtainedCollectionItem> items) {
+    public static void upsertItemsBatch(
+            @NotNull String playerName,
+            @NotNull Set<ObtainedCollectionItem> items,
+            Timestamp lastChanged
+    ) {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
 
-            try (PreparedStatement ps = conn.prepareStatement(
-            String.format("MERGE INTO %s USING DUAL ", API_CACHE_TABLE_NAME) +
-                "ON item_id = ? AND player_name = ? " +
-                "WHEN MATCHED THEN UPDATE SET item_count = ?, last_accessed = ? " +
-                "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count, item_name, collected_date, last_accessed) VALUES (?, ?, ?, ?, ?, ?)"
-            ))
+            try (
+                PreparedStatement ps1 = conn.prepareStatement(
+                    String.format("MERGE INTO %s USING DUAL ", COLLECTION_LOG_CACHE_TABLE_NAME) +
+                    "ON item_id = ? AND player_name = ? " +
+                    "WHEN MATCHED THEN UPDATE SET item_count = ? " +
+                    "WHEN NOT MATCHED THEN INSERT (player_name, item_id, item_count, item_name) VALUES (?, ?, ?, ?)"
+                );
+                PreparedStatement ps2 = conn.prepareStatement(
+                    String.format("MERGE INTO %s USING DUAL ", PLAYER_METADATA_TABLE_NAME) +
+                    "ON player_name = ? " +
+                    "WHEN MATCHED THEN UPDATE SET last_changed = ?, last_accessed = ? " +
+                    "WHEN NOT MATCHED THEN INSERT (player_name, last_changed, last_accessed) VALUES (?, ?, ?)"
+                )
+            )
             {
+                final String lowerPlayerName = playerName.toLowerCase();
+                final Timestamp lastAccessed = new Timestamp(System.currentTimeMillis());
+
                 for (ObtainedCollectionItem item : items) {
                     final int itemId = item.getId();
                     final int itemCount = item.getCount();
-                    final Timestamp collectedDate = item.getDate();
-                    final String lowerPlayerName = playerName.toLowerCase();
-                    final Timestamp lastAccessed = new Timestamp(System.currentTimeMillis());
 
-                    ps.setInt(1, itemId);
-                    ps.setInt(6, itemId);
+                    ps1.setInt(1, itemId);
+                    ps1.setString(2, lowerPlayerName);
+                    ps1.setInt(3, itemCount);
+                    ps1.setString(4, lowerPlayerName);
+                    ps1.setInt(5, itemId);
+                    ps1.setInt(6, itemCount);
+                    ps1.setString(7, item.getName());
 
-                    ps.setInt(3, itemCount);
-                    ps.setInt(7, itemCount);
-
-                    ps.setString(2, lowerPlayerName);
-                    ps.setString(5, lowerPlayerName);
-
-                    ps.setString(8, item.getName());
-
-                    ps.setTimestamp(9, collectedDate);
-
-                    ps.setTimestamp(4, lastAccessed);
-                    ps.setTimestamp(10, lastAccessed);
-
-                    ps.addBatch();
+                    ps1.addBatch();
                 }
 
-                ps.executeBatch();
+                ps2.setString(1, lowerPlayerName);
+                ps2.setTimestamp(2, lastChanged);
+                ps2.setTimestamp(3, lastAccessed);
+                ps2.setString(4, lowerPlayerName);
+                ps2.setTimestamp(5, lastChanged);
+                ps2.setTimestamp(6, lastAccessed);
+
+                ps1.executeBatch();
+                ps2.execute();
             }
 
             conn.commit();
@@ -211,7 +170,7 @@ public class CollectionDatabase {
             try (PreparedStatement ps = conn.prepareStatement(
                 String.format(
                     "SELECT item_count, item_id FROM %s WHERE player_name = ? AND item_id = ? LIMIT 1",
-                    PLAYER_COLLECTION_LOG_TABLE
+                        COLLECTION_LOG_CACHE_TABLE_NAME
                 )
             ))
             {
@@ -245,7 +204,8 @@ public class CollectionDatabase {
     }
 
     public static Timestamp getLatestTimestamp(String playerName) {
-        String sql = String.format("SELECT MAX(collected_date) FROM %s WHERE player_name = ?", API_CACHE_TABLE_NAME);
+        String sql = String.format("SELECT last_changed FROM %s WHERE player_name = ?", PLAYER_METADATA_TABLE_NAME);
+
         try (Connection conn = getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, playerName.toLowerCase());
             ResultSet rs = ps.executeQuery();
@@ -263,7 +223,7 @@ public class CollectionDatabase {
         try (Connection conn = getConnection();
              Statement stmt = conn.createStatement())
         {
-            stmt.executeUpdate(String.format("DELETE FROM %s", API_CACHE_TABLE_NAME));
+            stmt.executeUpdate(String.format("DELETE FROM %s", COLLECTION_LOG_CACHE_TABLE_NAME));
         } catch (SQLException e) {
             log.warn("Error clearing all items: {}", e.getMessage());
         }
@@ -273,24 +233,35 @@ public class CollectionDatabase {
         Map<Integer, ObtainedCollectionItem> items = new HashMap<>();
 
         try (Connection conn = getConnection();
-             PreparedStatement ps = conn.prepareStatement(
+             PreparedStatement ps1 = conn.prepareStatement(
                  String.format(
                      "SELECT item_id, item_name, item_count FROM %s WHERE player_name = ? AND item_id IN (%s)",
-                     API_CACHE_TABLE_NAME,
+                     COLLECTION_LOG_CACHE_TABLE_NAME,
                      StringUtils.repeat("?", ",", categoryItems.size())
                  )
-        ))
+             );
+             PreparedStatement ps2 = conn.prepareStatement(
+                String.format("UPDATE %s ", PLAYER_METADATA_TABLE_NAME) +
+                "SET last_accessed = ? " +
+                "WHERE player_name = ?"
+             );
+        )
         {
-            ps.setString(1, playerName.toLowerCase());
+            conn.setAutoCommit(false);
 
+            final Timestamp lastAccessed = new Timestamp(System.currentTimeMillis());
+            final String lowerPlayerName = playerName.toLowerCase();
+            
+            ps1.setString(1, playerName.toLowerCase());
+                        
             int paramIndex = 2;
             for (int id : categoryItems)
             {
-                ps.setInt(paramIndex, id);
+                ps1.setInt(paramIndex, id);
                 paramIndex++;
             }
 
-            try (ResultSet rs = ps.executeQuery()) {
+            try (ResultSet rs = ps1.executeQuery()) {
                 while (rs.next()) {
                     int itemId = rs.getInt("item_id");
                     String itemName = rs.getString("item_name");
@@ -299,6 +270,13 @@ public class CollectionDatabase {
                     items.put(itemId, new ObtainedCollectionItem(itemId, itemName, count));
                 }
             }
+
+            ps2.setTimestamp(1, lastAccessed);
+            ps2.setString(2, lowerPlayerName);
+
+            ps2.execute();
+
+            conn.commit();
         } catch (SQLException e) {
             log.warn("Error fetching items by category: {}", e.getMessage());
         }
@@ -317,18 +295,22 @@ public class CollectionDatabase {
         return sortedItems;
     }
 
-    public static void pruneOldPlayers(@NotNull String yourUsername, int maxPlayers) {
+    public static void pruneOldPlayers(String yourUsername, int maxPlayers) {
         try (Connection conn = getConnection();
              PreparedStatement ps1 = conn.prepareStatement(
              "SELECT player_name, MIN(last_accessed) as oldest " +
-                 String.format("FROM %s ", API_CACHE_TABLE_NAME) +
+                 String.format("FROM %s ", COLLECTION_LOG_CACHE_TABLE_NAME) +
                  "WHERE player_name != ? " +
                  "GROUP BY player_name " +
                  "ORDER BY oldest ASC"
              );
              PreparedStatement deleteStmt = conn.prepareStatement(
-                 String.format("DELETE FROM %s WHERE player_name = ?", API_CACHE_TABLE_NAME)
-             )
+                 String.format(
+                     "DELETE FROM %s AS a INNER JOIN %s AS b WHERE a.player_name = b.player_name AND a.player_name = ?",
+                     COLLECTION_LOG_CACHE_TABLE_NAME,
+                     PLAYER_METADATA_TABLE_NAME
+                 )
+             );
         ) {
             ps1.setString(1, yourUsername.toLowerCase());
             ResultSet rs = ps1.executeQuery();

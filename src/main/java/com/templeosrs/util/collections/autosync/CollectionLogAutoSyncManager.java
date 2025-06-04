@@ -2,12 +2,14 @@ package com.templeosrs.util.collections.autosync;
 
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
+import com.google.gson.Gson;
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import com.templeosrs.util.collections.database.CollectionDatabase;
+import com.templeosrs.util.collections.data.CollectionLogSyncResponse;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Synchronized;
@@ -24,6 +26,8 @@ import net.runelite.client.eventbus.Subscribe;
 import org.jetbrains.annotations.Nullable;
 
 import javax.inject.Inject;
+import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -59,6 +63,9 @@ public class CollectionLogAutoSyncManager
 
     @Inject
     private CollectionLogManager collectionLogManager;
+
+    @Inject
+    private Gson gson;
 
     @Getter
     protected final HashSet<String> obtainedItemNames = new HashSet<>();
@@ -173,6 +180,8 @@ public class CollectionLogAutoSyncManager
             {
                 log.debug("No saved log items were found, falling back to a full sync for {}", username);
 
+                clearSyncCountdown();
+
                 return;
             }
 
@@ -227,6 +236,11 @@ public class CollectionLogAutoSyncManager
         }
 
         String username = client.getLocalPlayer().getName();
+
+        if (username == null) {
+            return;
+        }
+
         RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
         PlayerProfile profileKey = new PlayerProfile(username, profileType);
         
@@ -238,10 +252,15 @@ public class CollectionLogAutoSyncManager
         );
 
         try {
-            requestManager.uploadObtainedCollectionLogItems(submission);
+            String response = requestManager.uploadObtainedCollectionLogItems(submission);
 
-            // Save the current state of the player's collection log for future diffing
-            CollectionDatabase.upsertPlayerCollectionLogItems(username, pendingSyncItems);
+            CollectionLogSyncResponse collectionLogSyncResponse = gson.fromJson(response, CollectionLogSyncResponse.class);
+            String lastChangedTimestamp = getLastChangedTimestamp(collectionLogSyncResponse, response);
+
+            log.debug("response: {}, lastChanged: {}", response, lastChangedTimestamp);
+
+            // Saves the new/updated items to the API cache to prevent refetching the entire log
+            CollectionDatabase.upsertItemsBatch(username, pendingSyncItems, Timestamp.valueOf(lastChangedTimestamp));
 
             obtainedItemNames.clear();
             pendingSyncItems.clear();
@@ -249,10 +268,29 @@ public class CollectionLogAutoSyncManager
             clearSyncCountdown();
 
             log.debug("Successfully synchronised new log items for {}", submission.getUsername());
-        } catch (Exception e) {
+        } catch (IOException | NullPointerException e) {
             log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
         } finally {
             backoffStrategy.finishCycle();
         }
+    }
+
+    private String getLastChangedTimestamp(CollectionLogSyncResponse collectionLogSyncResponse, String response) throws IOException {
+        CollectionLogSyncResponse.Error error = collectionLogSyncResponse.getError();
+        CollectionLogSyncResponse.Data data = collectionLogSyncResponse.getData();
+
+        if (error == null && data == null) {
+            clearSyncCountdown();
+
+            throw new NullPointerException("Unexpected response format from the collection log sync endpoint: " + response);
+        }
+
+        if (error != null) {
+            clearSyncCountdown();
+
+            throw new IOException(String.valueOf(error));
+        }
+
+        return data.getLastChanged();
     }
 }

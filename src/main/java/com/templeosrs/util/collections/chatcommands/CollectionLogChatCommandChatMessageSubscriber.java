@@ -162,8 +162,8 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                     log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
 
                     final String errorMessage = json != null && json.contains("error:unsynced")
-                        ? "⚠️ " + playerName + " has not synced their log on TempleOSRS."
-                        : "⚠️ Failed to fetch log for " + playerName + ".";  // Use original name here
+                        ? playerName + " has not synced their log on TempleOSRS."
+                        : "Failed to fetch log for " + playerName + ".";  // Use original name here
 
                     chatMessageManager.queue(
                             QueuedMessage.builder()
