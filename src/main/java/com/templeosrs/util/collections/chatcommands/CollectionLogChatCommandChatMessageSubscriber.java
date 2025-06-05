@@ -231,10 +231,8 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 }
             }
 
-            SwingUtilities.invokeLater(() -> {
-                event.getMessageNode().setRuneLiteFormatMessage(sb.toString());
-                client.refreshChat();
-            });
+            event.getMessageNode().setRuneLiteFormatMessage(sb.toString());
+            client.refreshChat();
         });
     }
 

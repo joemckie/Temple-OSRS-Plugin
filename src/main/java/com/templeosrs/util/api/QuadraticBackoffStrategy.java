@@ -39,7 +39,7 @@ public class QuadraticBackoffStrategy {
         if (shouldSkip) {
             setSubmitting(false);
 
-            log.info("⚠️ Skipping request due to backoff configuration");
+            log.debug("⚠️ Skipping request due to backoff configuration");
         } else {
             beginNewRequestAttempt();
         }
