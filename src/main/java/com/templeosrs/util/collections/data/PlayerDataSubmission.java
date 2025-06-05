@@ -23,17 +23,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.data;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Value;
 
-@Data
+@Value
 @AllArgsConstructor
 public class PlayerDataSubmission
 {
-    private String username;
-    private String profile;
-    private long playerHash;
-    private PlayerData data;
+    String username;
+    String profile;
+    long playerHash;
+    PlayerData data;
 }

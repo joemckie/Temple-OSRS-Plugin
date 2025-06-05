@@ -1,10 +1,12 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.util.api.QuadraticBackoffStrategy;
+import com.templeosrs.util.collections.CollectionLogManager;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
 import net.runelite.client.eventbus.Subscribe;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.HashSet;
@@ -15,6 +17,9 @@ public class CollectionLogAutoSyncGameTickSubscriber
 {
     @Inject
     private CollectionLogAutoSyncManager collectionLogAutoSyncManager;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     @Inject
     private Client client;
@@ -30,18 +35,40 @@ public class CollectionLogAutoSyncGameTickSubscriber
     @Subscribe
     public void onGameTick(GameTick gameTick)
     {
-        final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
-        final HashSet<Pair<String, Integer>> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+        QuadraticBackoffStrategy backoffStrategy = collectionLogAutoSyncManager.getBackoffStrategy();
 
-        // Note: There shouldn't be an instance of gameTickToSync
-        // being non-null without items in the pendingSyncItems set.
+        if (backoffStrategy.isRequestLimitReached()) {
+            collectionLogAutoSyncManager.clearSyncCountdown();
+            return;
+        }
+
+        if (backoffStrategy.isSubmitting() || collectionLogAutoSyncManager.isComputingDiff()) {
+            return;
+        }
+
+        final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
+        final HashSet<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+
+        // Add any diffed items to the pendingSync list when the log has been opened
+        if (
+            gameTickToSync != null &&
+            client.getTickCount() >= gameTickToSync &&
+            collectionLogAutoSyncManager.isLogOpenAutoSync() &&
+            pendingSyncItems.isEmpty()
+        ) {
+            collectionLogAutoSyncManager.setComputingDiff(true);
+            scheduledExecutorService.execute(collectionLogAutoSyncManager::computeCollectionLogDiff);
+
+            return;
+        }
+
         if (gameTickToSync == null || pendingSyncItems.isEmpty()) {
             return;
         }
 
         // Sync new collection log items when the game has reached correct tick.
         if (client.getTickCount() >= gameTickToSync) {
-            collectionLogAutoSyncManager.resetSyncCountdown();
+            backoffStrategy.setSubmitting(true);
             scheduledExecutorService.execute(collectionLogAutoSyncManager::uploadObtainedCollectionLogItems);
         }
     }

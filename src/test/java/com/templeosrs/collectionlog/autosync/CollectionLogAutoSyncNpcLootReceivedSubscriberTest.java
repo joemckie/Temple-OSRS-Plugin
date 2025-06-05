@@ -1,5 +1,6 @@
 package com.templeosrs.collectionlog.autosync;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemStack;
@@ -89,14 +90,14 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriberTest extends MockedCo
 
         NpcLootReceived npcLootReceived = buildNpcLootReceivedEvent(
                 new ItemStack[]{
-                        new ItemStack(ItemID.TWISTED_BOW, 1)
+                        new ItemStack(ItemID.TWISTED_BOW, 42)
                 }
         );
 
         eventBus.post(npcLootReceived);
 
-        final HashSet<Pair<String, Integer>> expectedHashSet = new HashSet<>();
-        expectedHashSet.add(Pair.of("Twisted bow", ItemID.TWISTED_BOW));
+        final HashSet<ObtainedCollectionItem> expectedHashSet = new HashSet<>();
+        expectedHashSet.add(new ObtainedCollectionItem(ItemID.TWISTED_BOW, "Twisted bow", 42));
 
         assertEquals(expectedHashSet, collectionLogAutoSyncManager.getPendingSyncItems());
     }

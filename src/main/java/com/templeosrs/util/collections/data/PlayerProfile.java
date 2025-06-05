@@ -23,17 +23,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.data;
 
-import lombok.Data;
+import lombok.Value;
+import net.runelite.client.config.RuneScapeProfileType;
 
-import java.util.ArrayList;
-
-@Data
-public class Manifest
+@Value
+public class PlayerProfile
 {
-    final int version = 1;
-    public final int[] varbits = new int[0];
-    public final int[] varps = new int[0];
-    public final ArrayList<Integer> collections = new ArrayList<>();
+    String username;
+    RuneScapeProfileType profileType;
 }

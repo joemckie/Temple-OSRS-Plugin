@@ -35,13 +35,16 @@ dependencies {
     testImplementation(group: 'com.google.inject.extensions', name:'guice-testlib', version: "4.1.0") {
         exclude group: 'com.google.inject', module: 'guice' // already provided by runelite
     }
+
+    // Required for local database storage (used at runtime)
+    implementation("com.h2database:h2:2.1.212")
 }
 
 group = 'com.example'
 version = '1.0-SNAPSHOT'
 sourceCompatibility = '1.8'
 
-tasks.withType(JavaCompile) {
+tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 

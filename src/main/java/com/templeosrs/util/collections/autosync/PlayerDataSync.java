@@ -25,8 +25,11 @@
 
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+
+import java.util.Set;
 
 @Data
 @AllArgsConstructor
@@ -35,5 +38,5 @@ public class PlayerDataSync
     private String username;
     private String profile;
     private long playerHash;
-    private Object[] items;
+    private Set<ObtainedCollectionItem> items;
 }

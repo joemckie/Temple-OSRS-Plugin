@@ -78,10 +78,11 @@ public class CollectionLogAutoSyncConfigChecker {
     /**
      * Checks for OPTION_COLLECTION_NEW_ITEM varbit value changes and runs the warning message check.
      * This is also ran when logging in, as the game doesn't load varbits immediately.
+     * Don't read varbits during a world hop because they seem to always be 0
      */
     @Subscribe
     private void onVarbitChanged(VarbitChanged varbitChanged) {
-        if (varbitChanged.getVarbitId() == VarbitID.OPTION_COLLECTION_NEW_ITEM) {
+        if (varbitChanged.getVarbitId() == VarbitID.OPTION_COLLECTION_NEW_ITEM && client.getGameState() != GameState.HOPPING) {
             checkAndWarnForCollectionLogNotificationSetting(varbitChanged.getValue());
         }
     }

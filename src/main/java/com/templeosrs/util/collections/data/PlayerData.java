@@ -23,14 +23,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.templeosrs.util.collections;
+package com.templeosrs.util.collections.data;
 
-import lombok.Value;
-import net.runelite.client.config.RuneScapeProfileType;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
-@Value
-public class PlayerProfile
+import java.util.Set;
+
+@Data
+@AllArgsConstructor
+public class PlayerData
 {
-    String username;
-    RuneScapeProfileType profileType;
+    public int totalCollectionsAvailable;
+    public Set<ObtainedCollectionItem> obtainedItems;
 }

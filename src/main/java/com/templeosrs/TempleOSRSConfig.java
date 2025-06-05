@@ -6,6 +6,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Range;
 
 @ConfigGroup("TempleOSRS")
 public interface TempleOSRSConfig extends Config
@@ -279,4 +280,26 @@ public interface TempleOSRSConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+			keyName = "enableClogChatCommand",
+			name = "Enable !col chat command",
+			description = "When enabled, the plugin will detect any !col chat messages and replace the contents with " +
+					"TempleOSRS log data, if available",
+			position = 4,
+			section = clogOptions
+	)
+	default boolean enableClogChatCommand() { return true; }
+
+	@Range(min = 50, max = 200)
+	@ConfigItem(
+			keyName = "maxCachedPlayers",
+			name = "Max Cached Players",
+			description = "Maximum number of players to keep in the database (excluding yourself)." +
+					" The more players the more MB kept on database. " +
+					"Default number of players in database is 50",
+			position = 3,
+			section = clogOptions
+	)
+	default int maxCachedPlayers() { return 50; }
 }

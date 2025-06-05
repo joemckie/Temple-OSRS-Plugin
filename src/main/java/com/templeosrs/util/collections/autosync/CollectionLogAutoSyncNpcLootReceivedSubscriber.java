@@ -1,5 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.NpcLootReceived;
@@ -33,10 +34,13 @@ public class CollectionLogAutoSyncNpcLootReceivedSubscriber
 
         npcLootReceived.getItems().forEach(item -> {
             final int itemId = item.getId();
+            final int itemCount = item.getQuantity();
             final String itemName = itemManager.getItemComposition(itemId).getName();
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
-                collectionLogAutoSyncManager.pendingSyncItems.add(Pair.of(itemName, itemId));
+                collectionLogAutoSyncManager.pendingSyncItems.add(
+                        new ObtainedCollectionItem(itemId, itemName, itemCount)
+                );
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
             }
         });

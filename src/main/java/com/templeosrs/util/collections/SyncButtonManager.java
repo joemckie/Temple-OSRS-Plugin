@@ -44,7 +44,6 @@ import static java.lang.Math.round;
 @Slf4j
 @Singleton
 public class SyncButtonManager {
-
     private static final int COLLECTION_LOG_SETUP = 7797;
     private static final int[] SPRITE_IDS_INACTIVE = {
             SpriteID.DIALOG_BACKGROUND,
@@ -77,27 +76,23 @@ public class SyncButtonManager {
     private static final int BUTTON_OFFSET = CLOSE_BUTTON_OFFSET + 5;
     private int lastAttemptedUpdate = -1;
 
-    private final Client client;
-    private final ClientThread clientThread;
-    private final EventBus eventBus;
+    @Inject
+    private Client client;
+
+    @Inject
+    private ClientThread clientThread;
+
+    @Inject
+    private EventBus eventBus;
+
+    @Inject
+    private CollectionLogManager collectionLogManager;
 
     @Getter
     @Setter
-    private boolean syncAllowed;
-
-    @Inject
-    private SyncButtonManager(
-            Client client,
-            ClientThread clientThread,
-            EventBus eventBus
-    ) {
-        this.client = client;
-        this.clientThread = clientThread;
-        this.eventBus = eventBus;
-    }
+    private boolean fullSyncRequested = false;
 
     public void startUp() {
-        setSyncAllowed(false);
         eventBus.register(this);
         clientThread.invokeLater(() -> tryAddButton(this::onButtonClick));
     }
@@ -143,9 +138,14 @@ public class SyncButtonManager {
             client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Last update within 30 seconds. You can update again in " + round((lastAttemptedUpdate + 50 - client.getTickCount()) * 0.6) + " seconds.", "TempleOSRS");
             return;
         }
+
         lastAttemptedUpdate = client.getTickCount();
 
-        setSyncAllowed(true);
+        setFullSyncRequested(true);
+
+        // Clear the previously obtained item list to avoid duplicating items when counts change
+        collectionLogManager.getObtainedCollectionLogItems().clear();
+
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
         client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Your collection log data is being sent to TempleOSRS...", "TempleOSRS");
