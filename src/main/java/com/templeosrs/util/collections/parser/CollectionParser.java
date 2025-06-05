@@ -7,6 +7,7 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.*;
 
+import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.collections.data.CollectionLogResponse;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
@@ -51,7 +52,7 @@ public class CollectionParser {
         }
 
         CollectionLogResponse.Data data = collectionLogResponse.getData();
-        CollectionLogResponse.Error error = collectionLogResponse.getError();
+        APIError error = collectionLogResponse.getError();
 
         // Handle error response
         if (error != null) {

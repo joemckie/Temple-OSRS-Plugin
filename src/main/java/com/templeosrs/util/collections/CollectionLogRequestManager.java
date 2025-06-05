@@ -1,19 +1,17 @@
 package com.templeosrs.util.collections;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.stream.JsonReader;
+import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.api.RequestManager;
 import com.templeosrs.util.collections.autosync.PlayerDataSync;
 import com.templeosrs.util.collections.data.PlayerDataSubmission;
+import com.templeosrs.util.collections.data.PlayerInfoResponse;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import java.io.IOException;
-import java.io.StringReader;
 
 @Slf4j
 public class CollectionLogRequestManager extends RequestManager {
@@ -71,27 +69,20 @@ public class CollectionLogRequestManager extends RequestManager {
         try {
             String response = get(url);
 
-            JsonReader reader = new JsonReader(new StringReader(response));
-            reader.setLenient(true);
+            PlayerInfoResponse playerInfoResponse = gson.fromJson(response, PlayerInfoResponse.class);
+            PlayerInfoResponse.Data data = playerInfoResponse.getData();
+            APIError error = playerInfoResponse.getError();
 
-            JsonElement element = gson.fromJson(reader, JsonElement.class);
-
-            if (element.isJsonObject()) {
-                JsonObject root = element.getAsJsonObject();
-
-                if (root.has("data")) {
-                    JsonObject data = root.getAsJsonObject("data");
-
-                    if (data.has("collection_log")) {
-                        JsonObject collectionLog = data.getAsJsonObject("collection_log");
-
-                        if (collectionLog.has("last_changed")) {
-                            return collectionLog.get("last_changed").getAsString();
-                        }
-                    }
-                }
+            if (error != null) {
+                throw new IOException(String.valueOf(error));
             }
-        } catch (Exception e) {
+
+            if (data != null) {
+                return data.getCollectionLog().getLastChanged();
+            }
+
+            throw new IOException("Unexpected response format: " + response);
+        } catch (IOException e) {
             log.error("❌ Failed to get last_changed for {}: {}", username, e.getMessage());
         }
 

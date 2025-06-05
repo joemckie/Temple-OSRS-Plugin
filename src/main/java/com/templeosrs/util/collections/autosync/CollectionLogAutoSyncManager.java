@@ -3,6 +3,7 @@ package com.templeosrs.util.collections.autosync;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.gson.Gson;
+import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
@@ -281,7 +282,7 @@ public class CollectionLogAutoSyncManager
     }
 
     private String getLastChangedTimestamp(CollectionLogSyncResponse collectionLogSyncResponse, String response) throws IOException {
-        CollectionLogSyncResponse.Error error = collectionLogSyncResponse.getError();
+        APIError error = collectionLogSyncResponse.getError();
         CollectionLogSyncResponse.Data data = collectionLogSyncResponse.getData();
 
         if (error == null && data == null) {

@@ -7,24 +7,17 @@ import lombok.Value;
 import javax.annotation.Nullable;
 
 @Value
-public class CollectionLogSyncResponse {
+public class PlayerInfoResponse {
     @Value
-    public static class Data {
-        @SerializedName("sync_date")
-        String syncDate;
-
-        @SerializedName("sync_date_unix")
-        int syncDateUnix;
-
+    public static class CollectionLog {
         @SerializedName("last_changed")
         String lastChanged;
+    }
 
-        @SerializedName("last_changed_unix")
-        int lastChangedUnix;
-
-        String username;
-
-        String message;
+    @Value
+    public static class Data {
+        @SerializedName("collection_log")
+        CollectionLog collectionLog;
     }
 
     @Nullable
