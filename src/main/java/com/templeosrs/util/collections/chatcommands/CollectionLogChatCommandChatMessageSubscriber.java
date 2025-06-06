@@ -25,7 +25,6 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
-import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
@@ -113,31 +112,23 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
         // Normalize boss name
         String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
+        StructComposition categoryStruct = getCategoryStructFromMessageInput(bossInput);
 
-        final boolean isAliasFound = CollectionLogCategoryUtils.CATEGORY_ALIASES.containsKey(bossInput);
-
-        CollectionLogCategory category;
-
-        try {
-            category = isAliasFound
-                    ? CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput)
-                    : CollectionLogCategory.valueOf(bossInput);
-        } catch (IllegalArgumentException e) {
+        if (categoryStruct == null) {
             log.warn("❌ No alias or category found for {}", bossInput);
 
-            final String finalMessage = "\"" + bossInput + "\" is not a valid collection log category or alias!";
+            final String errorMessage = "\"" + bossInput + "\" is not a valid collection log category or alias!";
 
             chatMessageManager.queue(
-                    QueuedMessage.builder()
-                            .type(ChatMessageType.GAMEMESSAGE)
-                            .runeLiteFormattedMessage("<col=ff0000>" + finalMessage + "</col>")
-                            .build()
+                QueuedMessage.builder()
+                    .type(ChatMessageType.GAMEMESSAGE)
+                    .runeLiteFormattedMessage("<col=ff0000>" + errorMessage + "</col>")
+                    .build()
             );
 
             return;
         }
 
-        StructComposition categoryStruct = client.getStructComposition(category.getStructId());
 
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
@@ -277,6 +268,36 @@ public class CollectionLogChatCommandChatMessageSubscriber {
                 IndexedSprite sprite = ImageUtil.getImageIndexedSprite(scaled, client);
                 client.getModIcons()[modIconIndex] = sprite;
             });
+        }
+    }
+
+    private String getCategoryKeyFromMessageInput(String bossInput)
+    {
+        final boolean isAliasFound = CollectionLogCategoryUtils.CATEGORY_ALIASES.containsKey(bossInput);
+
+        try {
+            CollectionLogCategory categoryEnum = (
+                isAliasFound
+                    ? CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput)
+                    : CollectionLogCategory.valueOf(bossInput)
+            );
+
+            return categoryEnum.toString();
+        } catch (IllegalArgumentException e) {
+            return bossInput;
+        }
+    }
+
+    private StructComposition getCategoryStructFromMessageInput(String bossInput)
+    {
+        String categoryKey = getCategoryKeyFromMessageInput(bossInput);
+
+        try {
+            int structId = collectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
+
+            return client.getStructComposition(structId);
+        } catch (NullPointerException e) {
+            return null;
         }
     }
 }

@@ -51,6 +51,7 @@ import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -113,6 +114,12 @@ public class CollectionLogManager {
     @Getter
     private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
 
+    /**
+     * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
+     */
+    @Getter
+    private final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
+
     @Getter
     private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
 
@@ -138,6 +145,7 @@ public class CollectionLogManager {
 
             collectionLogItemsFromCache.addAll(collectionLogCacheData.getItemIds());
             collectionLogCategoryItemMap.putAll(collectionLogCacheData.getCategoryItems());
+            collectionLogCategoryStructIdMap.putAll(collectionLogCacheData.getCategoryStructIds());
 
             return true;
         });
@@ -327,6 +335,9 @@ public class CollectionLogManager {
     private CollectionLogCacheData parseCacheForClog() {
         Set<Integer> items = new HashSet<>();
         Map<Integer, Set<Integer>> categoryItems = new HashMap<>();
+        Map<String, Integer> categoryStructIds = new HashMap<>();
+
+        final Pattern specialCharacterPattern = Pattern.compile("['()]", Pattern.CASE_INSENSITIVE);
 
         // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
         // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
@@ -351,7 +362,18 @@ public class CollectionLogManager {
                 // ex subtab struct: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=476
                 // ex subtab enum: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
+
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
+
+                // Gets a slugified version of the category title
+                // (e.g. Master Treasure Trails (Rare) -> master_treasure_trails_rare)
+                String normalizedCategoryName = specialCharacterPattern
+                        .matcher(
+                            subtabStruct.getStringValue(689)
+                                .toLowerCase()
+                                .replaceAll(" ", "_")
+                        )
+                        .replaceAll("");
 
                 Set<Integer> itemSet = new LinkedHashSet<>();
 
@@ -367,9 +389,10 @@ public class CollectionLogManager {
 
                 items.addAll(itemSet);
                 categoryItems.put(subtabStructIndex, itemSet);
+                categoryStructIds.put(normalizedCategoryName, subtabStructIndex);
             }
         }
 
-        return new CollectionLogCacheData(items, categoryItems);
+        return new CollectionLogCacheData(items, categoryItems, categoryStructIds);
     }
 }

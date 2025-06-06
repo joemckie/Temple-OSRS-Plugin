@@ -10,9 +10,9 @@ public class CollectionLogCategoryUtils {
      */
     public static final Map<String, CollectionLogCategory> CATEGORY_ALIASES = Map.<String, CollectionLogCategory>ofEntries(
             // === Bosses ===
-            Map.entry("armadyl", CollectionLogCategory.kree_arra),
-            Map.entry("kree", CollectionLogCategory.kree_arra),
-            Map.entry("arma", CollectionLogCategory.kree_arra),
+            Map.entry("armadyl", CollectionLogCategory.kreearra),
+            Map.entry("kree", CollectionLogCategory.kreearra),
+            Map.entry("arma", CollectionLogCategory.kreearra),
             Map.entry("archaeologist", CollectionLogCategory.crazy_archaeologist),
             Map.entry("crazy", CollectionLogCategory.crazy_archaeologist),
             Map.entry("barrows", CollectionLogCategory.barrows_chests),
