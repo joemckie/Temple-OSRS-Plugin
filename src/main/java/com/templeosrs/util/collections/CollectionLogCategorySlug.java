@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
  * @link <a href="https://templeosrs.com/api/collection-log/category_parameters.php">Full category list</a>
  */
 @RequiredArgsConstructor
-public enum CollectionLogCategory {
+public enum CollectionLogCategorySlug {
     // Bosses
     abyssal_sire,
     alchemical_hydra,
@@ -127,5 +127,9 @@ public enum CollectionLogCategory {
     slayer,
     tormented_demons,
     tzhaar,
-    miscellaneous;
+    miscellaneous,
+
+    // Custom
+    gilded,
+    thirdage,
 }

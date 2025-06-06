@@ -1,7 +1,7 @@
 package com.templeosrs.util.collections.chatcommands;
 
 import com.templeosrs.TempleOSRSPlugin;
-import com.templeosrs.util.collections.CollectionLogCategory;
+import com.templeosrs.util.collections.CollectionLogCategorySlug;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
@@ -9,6 +9,7 @@ import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
+import com.templeosrs.util.collections.data.CollectionLogCategory;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
@@ -112,9 +113,9 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
         // Normalize boss name
         String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
-        StructComposition categoryStruct = getCategoryStructFromMessageInput(bossInput);
+        CollectionLogCategory category = getCategoryFromMessageInput(bossInput);
 
-        if (categoryStruct == null) {
+        if (category == null) {
             log.warn("❌ No alias or category found for {}", bossInput);
 
             final String errorMessage = "\"" + bossInput + "\" is not a valid collection log category or alias!";
@@ -128,7 +129,6 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
             return;
         }
-
 
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
@@ -181,13 +181,13 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             // Fetch the requested category
             Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
                     normalizedPlayerName,
-                    collectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId())
+                    category.getItems()
             );
 
             loadItemIcons(items);
 
             StringBuilder sb = new StringBuilder();
-            String categoryName = categoryStruct.getStringValue(689);
+            String categoryName = category.getTitle();
 
             // If sender's name is same as the player being queried, omit the player's name
             if (!event.getName().equalsIgnoreCase(playerName)) {
@@ -273,29 +273,35 @@ public class CollectionLogChatCommandChatMessageSubscriber {
 
     private String getCategoryKeyFromMessageInput(String bossInput)
     {
-        final boolean isAliasFound = CollectionLogCategoryUtils.CATEGORY_ALIASES.containsKey(bossInput);
-
         try {
-            CollectionLogCategory categoryEnum = (
-                isAliasFound
-                    ? CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput)
-                    : CollectionLogCategory.valueOf(bossInput)
+            final CollectionLogCategorySlug categorySlug = Objects.requireNonNullElseGet(
+                    CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput),
+                    () -> CollectionLogCategorySlug.valueOf(bossInput)
             );
 
-            return categoryEnum.toString();
+            return categorySlug.toString();
         } catch (IllegalArgumentException e) {
             return bossInput;
         }
     }
 
-    private StructComposition getCategoryStructFromMessageInput(String bossInput)
+    private CollectionLogCategory getCategoryFromMessageInput(String bossInput)
     {
         String categoryKey = getCategoryKeyFromMessageInput(bossInput);
+        CollectionLogCategory customCategory = CollectionLogCategoryUtils.CUSTOM_CATEGORIES.get(bossInput);
+
+        if (customCategory != null) {
+            return customCategory;
+        }
 
         try {
             int structId = collectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
 
-            return client.getStructComposition(structId);
+            StructComposition categoryStruct = client.getStructComposition(structId);
+            String categoryTitle = categoryStruct.getStringValue(689);
+            Set<Integer> categoryItems = collectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
+
+            return new CollectionLogCategory(categoryTitle, categoryItems);
         } catch (NullPointerException e) {
             return null;
         }
