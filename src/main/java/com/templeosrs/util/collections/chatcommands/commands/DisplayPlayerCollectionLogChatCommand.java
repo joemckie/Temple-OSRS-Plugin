@@ -176,7 +176,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             // Fetch the requested category
             Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
                     normalizedPlayerName,
-                    category.getItems()
+					new LinkedHashSet<>(category.getItems())
             );
 
             loadItemIcons(
@@ -287,7 +287,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             String categoryTitle = categoryStruct.getStringValue(689);
             Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
 
-            return new CollectionLogCategory(categoryTitle, categoryItems);
+            return new CollectionLogCategory(categoryTitle,categoryItems);
         } catch (NullPointerException e) {
             return null;
         }

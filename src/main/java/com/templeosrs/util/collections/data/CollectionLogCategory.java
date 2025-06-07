@@ -1,8 +1,7 @@
 package com.templeosrs.util.collections.data;
 
-import lombok.Value;
-
 import java.util.Set;
+import lombok.Value;
 
 @Value
 public class CollectionLogCategory {

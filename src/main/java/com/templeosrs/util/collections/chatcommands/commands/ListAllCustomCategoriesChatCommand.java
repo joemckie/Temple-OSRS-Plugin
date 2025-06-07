@@ -1,14 +1,16 @@
 package com.templeosrs.util.collections.chatcommands.commands;
 
-import com.templeosrs.util.collections.CollectionLogCategorySlug;
 import com.templeosrs.util.collections.chatcommands.ChatCommand;
+import com.templeosrs.util.collections.data.CollectionLogCategory;
+import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
+import java.util.List;
+import java.util.stream.Collectors;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.QueuedMessage;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class ListAllCustomCategoriesChatCommand extends ChatCommand {
@@ -28,22 +30,30 @@ public class ListAllCustomCategoriesChatCommand extends ChatCommand {
                     .build()
             );
 
-            Map<String, CollectionLogCategorySlug> customCategories = new LinkedHashMap<>();
+			List<Integer> iconItemIds = CollectionLogCategoryUtils.CUSTOM_CATEGORIES
+				.values()
+				.stream()
+				.map(item -> item.getItems().iterator().next())
+				.collect(Collectors.toList());
 
-            customCategories.put("Gilded", CollectionLogCategorySlug.gilded);
-            customCategories.put("Third age", CollectionLogCategorySlug.thirdage);
+			loadItemIcons(iconItemIds);
 
-            for (Map.Entry<String, CollectionLogCategorySlug> customCategory : customCategories.entrySet()) {
+			int i = 0;
+
+            for (Map.Entry<String, CollectionLogCategory> customCategory : CollectionLogCategoryUtils.CUSTOM_CATEGORIES.entrySet()) {
+				int iconIndex = itemIconIndexes.get(iconItemIds.get(i++));
+
                 chatMessageManager.queue(
                     QueuedMessage.builder()
                         .type(ChatMessageType.CONSOLE)
                         .runeLiteFormattedMessage(
                             new ChatMessageBuilder()
                                 .append(ChatColorType.NORMAL)
-                                .append(customCategory.getKey())
+								.img(iconIndex)
+                                .append(customCategory.getValue().getTitle())
                                 .append(": ")
                                 .append(ChatColorType.HIGHLIGHT)
-                                .append(customCategory.getValue().name())
+                                .append(customCategory.getKey())
                                 .build()
                         )
                         .build()

@@ -2,6 +2,8 @@ package com.templeosrs.util.collections.utils;
 
 import com.templeosrs.util.collections.CollectionLogCategorySlug;
 import com.templeosrs.util.collections.data.CollectionLogCategory;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import net.runelite.api.gameval.ItemID;
 
 import java.util.Map;
@@ -186,60 +188,63 @@ public class CollectionLogCategoryUtils {
                 CollectionLogCategorySlug.gilded.name(),
                 new CollectionLogCategory(
                     "Gilded",
-
-                    Set.of(
-                        ItemID.RUNE_FULL_HELM_GOLDPLATE,
-                        ItemID.RUNE_PLATEBODY_GOLDPLATE,
-                        ItemID.RUNE_PLATELEGS_GOLDPLATE,
-                        ItemID.RUNE_PLATESKIRT_GOLDPLATE,
-                        ItemID.RUNE_KITESHIELD_GOLDPLATE,
-                        ItemID.RUNE_MED_HELM_GOLD,
-                        ItemID.RUNE_CHAINBODY_GOLD,
-                        ItemID.RUNE_SQ_SHIELD_GOLD,
-                        ItemID.RUNE_2H_SWORD_GOLD,
-                        ItemID.RUNE_SPEAR_GOLD,
-                        ItemID.BRUT_RUNE_SPEAR_GOLD,
-                        ItemID.RUNE_SCIMITAR_GOLD,
-                        ItemID.RUNE_BOOTS_GOLD,
-                        ItemID.TRAIL_GILDED_DHIDE_COIF,
-                        ItemID.TRAIL_GILDED_DHIDE_VAMBRACES,
-                        ItemID.TRAIL_GILDED_DHIDE_TOP,
-                        ItemID.TRAIL_GILDED_DHIDE_CHAPS,
-                        ItemID.TRAIL_GILDED_PICKAXE,
-                        ItemID.TRAIL_GILDED_AXE,
-                        ItemID.TRAIL_GILDED_SPADE
-                    )
+					new LinkedHashSet<>(
+						Arrays.asList(
+							ItemID.RUNE_FULL_HELM_GOLDPLATE,
+							ItemID.RUNE_PLATEBODY_GOLDPLATE,
+							ItemID.RUNE_PLATELEGS_GOLDPLATE,
+							ItemID.RUNE_PLATESKIRT_GOLDPLATE,
+							ItemID.RUNE_KITESHIELD_GOLDPLATE,
+							ItemID.RUNE_MED_HELM_GOLD,
+							ItemID.RUNE_CHAINBODY_GOLD,
+							ItemID.RUNE_SQ_SHIELD_GOLD,
+							ItemID.RUNE_2H_SWORD_GOLD,
+							ItemID.RUNE_SPEAR_GOLD,
+							ItemID.BRUT_RUNE_SPEAR_GOLD,
+							ItemID.RUNE_SCIMITAR_GOLD,
+							ItemID.RUNE_BOOTS_GOLD,
+							ItemID.TRAIL_GILDED_DHIDE_COIF,
+							ItemID.TRAIL_GILDED_DHIDE_VAMBRACES,
+							ItemID.TRAIL_GILDED_DHIDE_TOP,
+							ItemID.TRAIL_GILDED_DHIDE_CHAPS,
+							ItemID.TRAIL_GILDED_PICKAXE,
+							ItemID.TRAIL_GILDED_AXE,
+							ItemID.TRAIL_GILDED_SPADE
+						)
+					)
                 )
             ),
             Map.entry(
                 CollectionLogCategorySlug.thirdage.name(),
                 new CollectionLogCategory(
                     "Third age",
-                    Set.of(
-                        ItemID._3A_PICKAXE,
-                        ItemID._3A_AXE,
-                        ItemID._3A_DRUIDIC_TOP,
-                        ItemID._3A_DRUIDIC_BOTTOMS,
-                        ItemID._3A_DRUIDIC_STAFF,
-                        ItemID._3A_DRUIDIC_CLOAK,
-                        ItemID.TRAIL_FIGHTER_SWORD,
-                        ItemID.TRAIL_MAGE_WAND,
-                        ItemID.TRAIL_THIRD_CAPE,
-                        ItemID.TRAIL_RANGER_BOW,
-                        ItemID.TRAIL_RANGER_COIF,
-                        ItemID.TRAIL_RANGER_TORSO,
-                        ItemID.TRAIL_RANGER_LEGS,
-                        ItemID.TRAIL_RANGER_VAMBRACES,
-                        ItemID.TRAIL_MAGE_HAT,
-                        ItemID.TRAIL_MAGE_TORSO,
-                        ItemID.TRAIL_MAGE_LEGS,
-                        ItemID.TRAIL_MAGE_AMULET,
-                        ItemID.TRAIL_FIGHTER_HELM,
-                        ItemID.TRAIL_SILVER_PLATE_CHEST,
-                        ItemID.TRAIL_SILVER_PLATE_LEGS,
-                        ItemID.TRAIL_SILVER_PLATE_SKIRT,
-                        ItemID.TRAIL_FIGHTER_SHIELD
-                    )
+					new LinkedHashSet<>(
+						Arrays.asList(
+							ItemID._3A_PICKAXE,
+							ItemID._3A_AXE,
+							ItemID._3A_DRUIDIC_TOP,
+							ItemID._3A_DRUIDIC_BOTTOMS,
+							ItemID._3A_DRUIDIC_STAFF,
+							ItemID._3A_DRUIDIC_CLOAK,
+							ItemID.TRAIL_FIGHTER_SWORD,
+							ItemID.TRAIL_MAGE_WAND,
+							ItemID.TRAIL_THIRD_CAPE,
+							ItemID.TRAIL_RANGER_BOW,
+							ItemID.TRAIL_RANGER_COIF,
+							ItemID.TRAIL_RANGER_TORSO,
+							ItemID.TRAIL_RANGER_LEGS,
+							ItemID.TRAIL_RANGER_VAMBRACES,
+							ItemID.TRAIL_MAGE_HAT,
+							ItemID.TRAIL_MAGE_TORSO,
+							ItemID.TRAIL_MAGE_LEGS,
+							ItemID.TRAIL_MAGE_AMULET,
+							ItemID.TRAIL_FIGHTER_HELM,
+							ItemID.TRAIL_SILVER_PLATE_CHEST,
+							ItemID.TRAIL_SILVER_PLATE_LEGS,
+							ItemID.TRAIL_SILVER_PLATE_SKIRT,
+							ItemID.TRAIL_FIGHTER_SHIELD
+						)
+					)
                 )
             )
     );
