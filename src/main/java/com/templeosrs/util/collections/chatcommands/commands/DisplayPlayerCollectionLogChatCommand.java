@@ -13,25 +13,19 @@ import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
-import net.runelite.api.IndexedSprite;
 import net.runelite.api.StructComposition;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
-import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
-import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
@@ -52,30 +46,16 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
     private CollectionParser collectionParser;
 
     @Inject
-    private ItemManager itemManager;
-
-    @Inject
     private CollectionLogService collectionLogService;
 
-    private final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
-
-    private final Set<Integer> loadedItemIds = new HashSet<>();
-
-    public DisplayPlayerCollectionLogChatCommand() {
-        super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs, e.g. !col kree CousinOfKos", false);
-    }
-
-    @Override
-    public void shutDown()
-    {
-        // 🧼 Clear cached icons and IDs to prevent memory buildup
-        itemIconIndexes.clear();
-        loadedItemIds.clear();
-    }
+    public DisplayPlayerCollectionLogChatCommand()
+	{
+		super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs, e.g. !col kree CousinOfKos", false);
+	}
 
     @Override
     public void command(ChatMessage event)
-    {
+	{
         final String rawMessage = event.getMessage().trim();
 
         String[] parts = rawMessage.substring(5).trim().split(" ", 2);
@@ -199,7 +179,12 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                     category.getItems()
             );
 
-            loadItemIcons(items);
+            loadItemIcons(
+				items
+					.stream()
+					.map(ObtainedCollectionItem::getId)
+					.collect(Collectors.toList())
+			);
 
             ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
             String categoryName = category.getTitle();
@@ -223,10 +208,10 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
                 for (ObtainedCollectionItem item : items)
                 {
-                    Integer icon = itemIconIndexes.get(item.getId());
+                    Integer iconIndex = itemIconIndexes.get(item.getId());
 
-                    if (icon != null) {
-                        chatMessageBuilder.img(icon);
+                    if (iconIndex != null) {
+                        chatMessageBuilder.img(iconIndex);
                     }
 
                     chatMessageBuilder
@@ -270,50 +255,6 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
         }
 
         return null;
-    }
-
-    /**
-     * Loads the in-game icons for a given item list, ready to be used in the chat message.
-     * @param items The item list for which to load item icons.
-     */
-    private void loadItemIcons(Set<ObtainedCollectionItem> items) {
-        List<ObtainedCollectionItem> newItems = new ArrayList<>();
-
-        for (ObtainedCollectionItem item : items) {
-            if (!loadedItemIds.contains(item.getId())) {
-                newItems.add(item);
-                loadedItemIds.add(item.getId());
-            }
-        }
-
-        if (newItems.isEmpty()) {
-            return;
-        }
-
-        IndexedSprite[] modIcons = client.getModIcons();
-
-        if (modIcons == null) {
-            return;
-        }
-
-        int currentLength = modIcons.length;
-        int newSize = currentLength + newItems.size();
-        IndexedSprite[] newModIcons = Arrays.copyOf(modIcons, newSize);
-        client.setModIcons(newModIcons);
-
-        for (int i = 0; i < newItems.size(); i++) {
-            ObtainedCollectionItem item = newItems.get(i);
-            int modIconIndex = currentLength + i;
-            itemIconIndexes.put(item.getId(), modIconIndex);
-
-            AsyncBufferedImage img = itemManager.getImage(item.getId());
-
-            img.onLoaded(() -> {
-                BufferedImage scaled = ImageUtil.resizeImage(img, 18, 16);
-                IndexedSprite sprite = ImageUtil.getImageIndexedSprite(scaled, client);
-                client.getModIcons()[modIconIndex] = sprite;
-            });
-        }
     }
 
     private String getCategoryKeyFromMessageInput(String bossInput)
