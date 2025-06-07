@@ -93,7 +93,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         ChatCommand chatCommand = chatCommands.get(rawMessage.toLowerCase());
 
         if (chatCommand != null) {
-            chatCommand.command(event);
+            chatCommand.execute(event);
 
             return;
         }

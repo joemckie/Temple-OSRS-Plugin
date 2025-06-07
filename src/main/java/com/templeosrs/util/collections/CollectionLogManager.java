@@ -92,6 +92,9 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
+    @Inject
+    private CollectionLogRequestManager collectionLogRequestManager;
+
     @Nullable
     private Integer gameTickToSync;
 
@@ -225,14 +228,28 @@ public class CollectionLogManager {
                         return false;
                     }
 
-                    // Skip sync if the player's collection log has already been saved and is up-to-date
-                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
+                    try {
+                        String lastChanged = collectionLogRequestManager
+                                .getPlayerInfo(username)
+                                .getCollectionLog()
+                                .getLastChanged();
+
+
+                        // Skip sync if the player's collection log doesn't exist, or has already been saved and is up-to-date
+                        if (
+                            lastChanged == null ||
+                            (collectionLogService.isDataFresh(username, lastChanged) && CollectionDatabase.hasPlayerData(username))
+                        ) {
+                            return true;
+                        }
+
+                        collectionLogService.syncCollectionLog();
+
+                        return true;
+                    } catch (NullPointerException | IOException e) {
+                        // If an error occurs then bail early to avoid infinite retries
                         return true;
                     }
-
-                    collectionLogService.syncCollectionLog();
-
-                    return true;
                 });
             }
         }

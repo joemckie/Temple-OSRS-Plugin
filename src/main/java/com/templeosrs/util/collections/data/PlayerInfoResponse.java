@@ -10,14 +10,24 @@ import javax.annotation.Nullable;
 public class PlayerInfoResponse {
     @Value
     public static class CollectionLog {
+        @Nullable
         @SerializedName("last_changed")
         String lastChanged;
+
+        @SerializedName("log_synced")
+        int logSynced;
     }
 
     @Value
     public static class Data {
         @SerializedName("collection_log")
         CollectionLog collectionLog;
+
+        @SerializedName("Username")
+        String username;
+
+        @SerializedName("player_name_with_capitalization")
+        String playerNameWithCapitalization;
     }
 
     @Nullable

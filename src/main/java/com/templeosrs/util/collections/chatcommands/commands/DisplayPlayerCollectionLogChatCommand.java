@@ -5,9 +5,9 @@ import com.templeosrs.util.collections.CollectionLogCategorySlug;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.chatcommands.ChatCommand;
-import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
 import com.templeosrs.util.collections.data.CollectionLogCategory;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.PlayerInfoResponse;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
@@ -18,6 +18,8 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.IndexedSprite;
 import net.runelite.api.StructComposition;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.game.ItemManager;
@@ -26,6 +28,7 @@ import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -57,7 +60,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
     private final Set<Integer> loadedItemIds = new HashSet<>();
 
     public DisplayPlayerCollectionLogChatCommand() {
-        super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs using !col {boss} {player}", false);
+        super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs, e.g. !col kree CousinOfKos", false);
     }
 
     @Override
@@ -83,30 +86,72 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
         String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
         CollectionLogCategory category = getCategoryFromMessageInput(bossInput);
 
-        if (category == null) {
-            log.warn("❌ No alias or category found for {}", bossInput);
-
-            final String errorMessage = "\"" + bossInput + "\" is not a valid collection log category or alias!";
-
-            chatMessageManager.queue(
-                    QueuedMessage.builder()
-                            .type(ChatMessageType.GAMEMESSAGE)
-                            .runeLiteFormattedMessage("<col=ff0000>" + errorMessage + "</col>")
-                            .build()
-            );
-
-            return;
-        }
-
         // Determine target player (specified or sender)
         String playerName = (parts.length == 2) ? parts[1].trim() : event.getName();
         String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(playerName);  // Normalize the player name for the API call
         String localName = PlayerNameUtils.normalizePlayerName(client.getLocalPlayer().getName());
         boolean isLocalPlayer = normalizedPlayerName.equalsIgnoreCase(localName);
 
+        if (category == null) {
+            if (isLocalPlayer) {
+                log.warn("❌ No alias or category found for {}", bossInput);
+
+                final String errorMessage = new ChatMessageBuilder()
+                    .append(ChatColorType.NORMAL)
+                    .append("Use ")
+                    .append(ChatColorType.HIGHLIGHT)
+                    .append("!col help")
+                    .append(ChatColorType.NORMAL)
+                    .append(" to help find the correct category.")
+                    .build();
+
+                chatMessageManager.queue(
+                    QueuedMessage.builder()
+                        .type(ChatMessageType.CONSOLE)
+                        .runeLiteFormattedMessage(errorMessage)
+                        .build()
+                );
+            }
+
+            overwriteMessage(
+                new ChatMessageBuilder()
+                    .append(ChatColorType.HIGHLIGHT)
+                    .append(bossInput)
+                    .append(ChatColorType.NORMAL)
+                    .append(" is not a valid collection log category or alias.")
+                    .build(),
+                event.getMessageNode()
+            );
+
+            return;
+        }
+
         scheduledExecutorService.execute(() ->
         {
-            final boolean isDataStale = !collectionLogService.isDataFresh(normalizedPlayerName);
+            PlayerInfoResponse.Data playerInfo = getPlayerInfo(normalizedPlayerName, event);
+
+            if (playerInfo == null) {
+                // Error messages are handled when getting the player info
+                return;
+            }
+
+            if (playerInfo.getCollectionLog().getLastChanged() == null) {
+                overwriteMessage(
+                    new ChatMessageBuilder()
+                        .append(ChatColorType.HIGHLIGHT)
+                        .append(playerName)
+                        .append(ChatColorType.NORMAL)
+                        .append(" has no TempleOSRS collection log.")
+                        .build(),
+                    event.getMessageNode()
+                );
+
+                return;
+            }
+
+            String lastChanged = playerInfo.getCollectionLog().getLastChanged();
+
+            final boolean isDataStale = !collectionLogService.isDataFresh(normalizedPlayerName, lastChanged);
             final boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
             final boolean shouldUpdate = !hasLocalData || isDataStale;
 
@@ -115,27 +160,25 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                 log.debug("📭 No local data for '{}', fetching from API...", normalizedPlayerName);
                 String json = collectionLogRequestManager.getPlayerCollectionLog(normalizedPlayerName);
 
-                // Handle empty or failed fetch
-                if (json == null || json.contains("error:unsynced"))
-                {
+                if (json == null) {
                     log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
 
-                    final String errorMessage = json != null && json.contains("error:unsynced")
-                            ? playerName + " has not synced their log on TempleOSRS."
-                            : "Failed to fetch log for " + playerName + ".";  // Use original name here
-
-                    chatMessageManager.queue(
-                            QueuedMessage.builder()
-                                    .type(ChatMessageType.GAMEMESSAGE)
-                                    .runeLiteFormattedMessage("<col=ff6666>" + errorMessage + "</col>")
-                                    .build()
+                    overwriteMessage(
+                        new ChatMessageBuilder()
+                            .append(ChatColorType.NORMAL)
+                            .append("Failed to fetch log for ")
+                            .append(ChatColorType.HIGHLIGHT)
+                            .append(playerName)
+                            .append(ChatColorType.NORMAL)
+                            .append(".")
+                            .build(),
+                        event.getMessageNode()
                     );
 
                     return;
                 }
 
-                if (!isLocalPlayer)
-                {
+                if (!isLocalPlayer) {
                     CollectionDatabase.pruneOldPlayers(localName, templeOSRSPlugin.getConfig().maxCachedPlayers());
                 }
 
@@ -170,7 +213,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             }
 
             if (items.isEmpty()) {
-                sb.append("No data found.");
+                sb.append("No obtained collection log items.");
             } else {
                 int i = 0;
 
@@ -190,9 +233,37 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                 }
             }
 
-            event.getMessageNode().setRuneLiteFormatMessage(sb.toString());
-            client.refreshChat();
+            overwriteMessage(sb.toString(), event.getMessageNode());
         });
+    }
+
+    private PlayerInfoResponse.Data getPlayerInfo(String playerName, ChatMessage chatMessage)
+    {
+        try {
+            return collectionLogRequestManager.getPlayerInfo(playerName);
+        } catch (NullPointerException e) {
+            overwriteMessage(
+                new ChatMessageBuilder()
+                    .append(ChatColorType.NORMAL)
+                    .append("Unable to find ")
+                    .append(ChatColorType.HIGHLIGHT)
+                    .append(playerName)
+                    .append(ChatColorType.NORMAL)
+                    .append(" on TempleOSRS.")
+                    .build(),
+                chatMessage.getMessageNode()
+            );
+        } catch (IOException e) {
+            overwriteMessage(
+                new ChatMessageBuilder()
+                    .append(ChatColorType.NORMAL)
+                    .append("Failed to fetch from TempleOSRS.")
+                    .build(),
+                chatMessage.getMessageNode()
+            );
+        }
+
+        return null;
     }
 
     /**

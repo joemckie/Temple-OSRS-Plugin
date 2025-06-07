@@ -4,10 +4,12 @@ import com.templeosrs.util.collections.CollectionLogCategorySlug;
 import com.templeosrs.util.collections.chatcommands.ChatCommand;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.QueuedMessage;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class ListAllCustomCategoriesChatCommand extends ChatCommand {
     public ListAllCustomCategoriesChatCommand()
@@ -18,24 +20,32 @@ public class ListAllCustomCategoriesChatCommand extends ChatCommand {
     @Override
     public void command(ChatMessage event)
     {
-        scheduledExecutorService.execute(() -> {
+        clientThread.invoke(() -> {
             chatMessageManager.queue(
                 QueuedMessage.builder()
-                    .type(ChatMessageType.GAMEMESSAGE)
-                    .runeLiteFormattedMessage("Available custom categories (this is only visible to you):")
+                    .type(ChatMessageType.CONSOLE)
+                    .runeLiteFormattedMessage(buildAvailableCategoriesMessage("custom"))
                     .build()
             );
 
-            List<CollectionLogCategorySlug> customCategories = new LinkedList<>();
+            Map<String, CollectionLogCategorySlug> customCategories = new LinkedHashMap<>();
 
-            customCategories.add(CollectionLogCategorySlug.gilded);
-            customCategories.add(CollectionLogCategorySlug.thirdage);
+            customCategories.put("Gilded", CollectionLogCategorySlug.gilded);
+            customCategories.put("Third age", CollectionLogCategorySlug.thirdage);
 
-            for (CollectionLogCategorySlug categorySlug : customCategories) {
+            for (Map.Entry<String, CollectionLogCategorySlug> customCategory : customCategories.entrySet()) {
                 chatMessageManager.queue(
                     QueuedMessage.builder()
-                        .type(ChatMessageType.GAMEMESSAGE)
-                        .runeLiteFormattedMessage(categorySlug.toString())
+                        .type(ChatMessageType.CONSOLE)
+                        .runeLiteFormattedMessage(
+                            new ChatMessageBuilder()
+                                .append(ChatColorType.NORMAL)
+                                .append(customCategory.getKey())
+                                .append(": ")
+                                .append(ChatColorType.HIGHLIGHT)
+                                .append(customCategory.getValue().name())
+                                .build()
+                        )
                         .build()
                 );
             }

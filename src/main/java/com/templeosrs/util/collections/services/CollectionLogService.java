@@ -7,6 +7,7 @@ import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import org.jetbrains.annotations.NotNull;
 
 import javax.inject.Inject;
 import java.sql.Timestamp;
@@ -33,11 +34,10 @@ public class CollectionLogService {
      * @param username The username to check
      * @return True if the saved data is the latest available.
      */
-    public boolean isDataFresh(String username)
+    public boolean isDataFresh(@NotNull String username, @NotNull String lastChanged)
     {
-        String lastChanged = collectionLogRequestManager.getLastChangedTimestamp(username);
         Timestamp dbTimestamp = CollectionDatabase.getLatestTimestamp(username);
-        Timestamp apiTimestamp = lastChanged != null ? Timestamp.valueOf(lastChanged) : null;
+        Timestamp apiTimestamp = Timestamp.valueOf(lastChanged);
 
         log.debug("🕒 [Compare] {} | DB: {} | API: {}", username, dbTimestamp, apiTimestamp);
 

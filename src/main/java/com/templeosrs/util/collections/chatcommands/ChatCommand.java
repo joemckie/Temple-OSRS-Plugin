@@ -2,17 +2,24 @@ package com.templeosrs.util.collections.chatcommands;
 
 import com.templeosrs.util.collections.CollectionLogCategoryGroup;
 import com.templeosrs.util.collections.CollectionLogManager;
+import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.MessageNode;
+import net.runelite.api.StructComposition;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatColorType;
+import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 
 import javax.inject.Inject;
 import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
 
+@Slf4j
 public abstract class ChatCommand {
     public ChatCommand(String trigger, String description, boolean onlyShowForLocalPlayer)
     {
@@ -25,10 +32,10 @@ public abstract class ChatCommand {
     protected Client client;
 
     @Inject
-    protected ChatMessageManager chatMessageManager;
+    protected ClientThread clientThread;
 
     @Inject
-    protected ScheduledExecutorService scheduledExecutorService;
+    protected ChatMessageManager chatMessageManager;
 
     /**
      * The chat message that triggers the command, e.g. "!col help"
@@ -58,6 +65,24 @@ public abstract class ChatCommand {
         return !senderName.equalsIgnoreCase(localName);
     }
 
+    public String buildAvailableCategoriesMessage(String category)
+    {
+        return new ChatMessageBuilder()
+            .append(ChatColorType.NORMAL)
+            .append("Available ")
+            .append(ChatColorType.HIGHLIGHT)
+            .append(category)
+            .append(ChatColorType.NORMAL)
+            .append(" categories:")
+            .build();
+    }
+
+    public void overwriteMessage(String newMessage, MessageNode messageNode)
+    {
+        messageNode.setRuneLiteFormatMessage(newMessage);
+        client.refreshChat();
+    }
+
     /**
      * Outputs a list of all available collection log categories.
      * As this is derived from the in-game cache,
@@ -66,11 +91,11 @@ public abstract class ChatCommand {
      */
     public void listAvailableCollectionLogCategories(CollectionLogCategoryGroup categoryGroup)
     {
-        scheduledExecutorService.execute(() -> {
+        clientThread.invoke(() -> {
             chatMessageManager.queue(
                 QueuedMessage.builder()
-                    .type(ChatMessageType.GAMEMESSAGE)
-                    .runeLiteFormattedMessage("Available " + categoryGroup.toString() + " categories (this is only visible to you):")
+                    .type(ChatMessageType.CONSOLE)
+                    .runeLiteFormattedMessage(buildAvailableCategoriesMessage(categoryGroup.toString()))
                     .build()
             );
 
@@ -79,10 +104,29 @@ public abstract class ChatCommand {
                     .get(categoryGroup.getStructId());
 
             for (String categorySlug : categorySlugs) {
+                int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categorySlug);
+                StructComposition categoryStruct = client.getStructComposition(structId);
+                String categoryTitle = categoryStruct.getStringValue(689);
+
+                ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder()
+                        .append(ChatColorType.NORMAL)
+                        .append(categoryTitle)
+                        .append(": ");
+
+                Set<String> categoryAliases = CollectionLogCategoryUtils.INVERTED_ALIASES.get(categorySlug);
+
+                chatMessageBuilder
+                        .append(ChatColorType.HIGHLIGHT)
+                        .append(
+                            categoryAliases == null
+                                ? categorySlug
+                                : String.join(", ", categoryAliases)
+                        );
+
                 chatMessageManager.queue(
                     QueuedMessage.builder()
-                        .type(ChatMessageType.GAMEMESSAGE)
-                        .runeLiteFormattedMessage(categorySlug)
+                        .type(ChatMessageType.CONSOLE)
+                        .runeLiteFormattedMessage(chatMessageBuilder.build())
                         .build()
                 );
             }

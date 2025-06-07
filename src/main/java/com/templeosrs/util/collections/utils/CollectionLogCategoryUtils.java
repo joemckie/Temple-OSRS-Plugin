@@ -6,6 +6,7 @@ import net.runelite.api.gameval.ItemID;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class CollectionLogCategoryUtils {
     /**
@@ -161,6 +162,24 @@ public class CollectionLogCategoryUtils {
             Map.entry("tob", CollectionLogCategorySlug.theatre_of_blood),
             Map.entry("theatre", CollectionLogCategorySlug.theatre_of_blood)
     );
+
+    /**
+     * Builds a list of alises grouped by their category slug,
+     * e.g. kreearra=[armadyl, kree, arma]
+     * Used to provide a list of aliases when using the help commands
+     */
+    public static final Map<String, Set<String>> INVERTED_ALIASES = CATEGORY_ALIASES
+            .entrySet()
+            .stream()
+            .collect(
+                Collectors.groupingBy(
+                    item -> item.getValue().toString(),
+                    Collectors.mapping(
+                        Map.Entry::getKey,
+                        Collectors.toSet()
+                    )
+                )
+            );
 
     public static final Map<String, CollectionLogCategory> CUSTOM_CATEGORIES = Map.ofEntries(
             Map.entry(
