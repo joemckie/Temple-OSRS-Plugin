@@ -9,4 +9,6 @@ import java.util.Set;
 public class CollectionLogCacheData {
     Set<Integer> itemIds;
     Map<Integer, Set<Integer>> categoryItems;
+    Map<String, Integer> categoryStructIds;
+    Map<Integer, Set<String>> categorySlugs;
 }

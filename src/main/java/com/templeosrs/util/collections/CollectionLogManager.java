@@ -51,6 +51,7 @@ import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -91,6 +92,9 @@ public class CollectionLogManager {
     @Inject
     private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
+    @Inject
+    private CollectionLogRequestManager collectionLogRequestManager;
+
     @Nullable
     private Integer gameTickToSync;
 
@@ -111,7 +115,20 @@ public class CollectionLogManager {
      * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
      */
     @Getter
-    private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+    private static final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+
+    /**
+     * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
+     */
+    @Getter
+    private static final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
+
+    /**
+     * Maps top level tabs (e.g. "Bosses") to their containing categories.
+     * Used to list the available categories when using the "!col help ___" commands
+     */
+    @Getter
+    private static final Map<Integer, Set<String>> collectionLogCategoryTabSlugs = new LinkedHashMap<>();
 
     @Getter
     private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
@@ -138,6 +155,8 @@ public class CollectionLogManager {
 
             collectionLogItemsFromCache.addAll(collectionLogCacheData.getItemIds());
             collectionLogCategoryItemMap.putAll(collectionLogCacheData.getCategoryItems());
+            collectionLogCategoryStructIdMap.putAll(collectionLogCacheData.getCategoryStructIds());
+            collectionLogCategoryTabSlugs.putAll(collectionLogCacheData.getCategorySlugs());
 
             return true;
         });
@@ -209,14 +228,28 @@ public class CollectionLogManager {
                         return false;
                     }
 
-                    // Skip sync if the player's collection log has already been saved and is up-to-date
-                    if (collectionLogService.isDataFresh(username) && CollectionDatabase.hasPlayerData(username)) {
+                    try {
+                        String lastChanged = collectionLogRequestManager
+                                .getPlayerInfo(username)
+                                .getCollectionLog()
+                                .getLastChanged();
+
+
+                        // Skip sync if the player's collection log doesn't exist, or has already been saved and is up-to-date
+                        if (
+                            lastChanged == null ||
+                            (collectionLogService.isDataFresh(username, lastChanged) && CollectionDatabase.hasPlayerData(username))
+                        ) {
+                            return true;
+                        }
+
+                        collectionLogService.syncCollectionLog();
+
+                        return true;
+                    } catch (NullPointerException | IOException e) {
+                        // If an error occurs then bail early to avoid infinite retries
                         return true;
                     }
-
-                    collectionLogService.syncCollectionLog();
-
-                    return true;
                 });
             }
         }
@@ -327,6 +360,10 @@ public class CollectionLogManager {
     private CollectionLogCacheData parseCacheForClog() {
         Set<Integer> items = new HashSet<>();
         Map<Integer, Set<Integer>> categoryItems = new HashMap<>();
+        Map<String, Integer> categoryStructIds = new HashMap<>();
+        Map<Integer, Set<String>> categorySlugs = new LinkedHashMap<>();
+
+        final Pattern specialCharacterPattern = Pattern.compile("['()]", Pattern.CASE_INSENSITIVE);
 
         // Some items with data saved on them have replacements to fix a duping issue (satchels, flamtaer bag)
         // Enum 3721 contains a mapping of the item ids to replace -> ids to replace them with
@@ -341,6 +378,8 @@ public class CollectionLogManager {
             // ex: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=471
             StructComposition topLevelTabStruct = client.getStructComposition(topLevelTabStructIndex);
 
+            Set<String> singleCategorySlugSet = new LinkedHashSet<>();
+
             // Param 683 contains the pointer to the enum that contains the subtabs ids
             // ex: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2103
             int[] subtabStructIndices = client.getEnum(topLevelTabStruct.getIntValue(683)).getIntVals();
@@ -351,7 +390,18 @@ public class CollectionLogManager {
                 // ex subtab struct: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=476
                 // ex subtab enum: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2109
                 StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
+
                 int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
+
+                // Gets a slugified version of the category title
+                // (e.g. Master Treasure Trails (Rare) -> master_treasure_trails_rare)
+                String normalizedCategoryName = specialCharacterPattern
+                        .matcher(
+                            subtabStruct.getStringValue(689)
+                                .toLowerCase()
+                                .replaceAll(" ", "_")
+                        )
+                        .replaceAll("");
 
                 Set<Integer> itemSet = new LinkedHashSet<>();
 
@@ -367,9 +417,13 @@ public class CollectionLogManager {
 
                 items.addAll(itemSet);
                 categoryItems.put(subtabStructIndex, itemSet);
+                categoryStructIds.put(normalizedCategoryName, subtabStructIndex);
+                singleCategorySlugSet.add(normalizedCategoryName);
             }
+
+            categorySlugs.put(topLevelTabStructIndex, singleCategorySlugSet);
         }
 
-        return new CollectionLogCacheData(items, categoryItems);
+        return new CollectionLogCacheData(items, categoryItems, categoryStructIds, categorySlugs);
     }
 }

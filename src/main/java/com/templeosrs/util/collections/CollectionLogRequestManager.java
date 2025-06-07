@@ -52,41 +52,42 @@ public class CollectionLogRequestManager extends RequestManager {
     }
 
     /**
-     * Retrieves the time the user's collection log last changed from the Player Info endpoint
+     * Retrieves player info from the Player Info endpoint
      *
      * @param username The username to check
      * @link <a href="https://templeosrs.com/api_doc.php#Player_Information">Player Info API</a>
      */
-    public String getLastChangedTimestamp(@NotNull String username) {
+    @NotNull
+    public PlayerInfoResponse.Data getPlayerInfo(@NotNull String username) throws IOException, NullPointerException {
         final HttpUrl url = new HttpUrl.Builder()
                 .scheme(scheme)
                 .host(host)
                 .addPathSegments("api/player_info.php")
                 .addQueryParameter("player", username)
                 .addQueryParameter("cloginfo", "1")
+                .addQueryParameter("formattedrsn", "1")
                 .build();
 
-        try {
-            String response = get(url);
 
-            PlayerInfoResponse playerInfoResponse = gson.fromJson(response, PlayerInfoResponse.class);
-            PlayerInfoResponse.Data data = playerInfoResponse.getData();
-            APIError error = playerInfoResponse.getError();
+        String response = get(url);
 
-            if (error != null) {
-                throw new IOException(String.valueOf(error));
+        PlayerInfoResponse playerInfoResponse = gson.fromJson(response, PlayerInfoResponse.class);
+        PlayerInfoResponse.Data data = playerInfoResponse.getData();
+        APIError error = playerInfoResponse.getError();
+
+        if (error != null) {
+            if (error.getCode() == 402) {
+                throw new NullPointerException("Player has no TempleOSRS profile");
             }
 
-            if (data != null) {
-                return data.getCollectionLog().getLastChanged();
-            }
-
-            throw new IOException("Unexpected response format: " + response);
-        } catch (IOException e) {
-            log.error("❌ Failed to get last_changed for {}: {}", username, e.getMessage());
+            throw new IOException(String.valueOf(error));
         }
 
-        return null;
+        if (data != null) {
+            return data;
+        }
+
+        throw new IOException("Unexpected response format: " + response);
     }
 
     /**
