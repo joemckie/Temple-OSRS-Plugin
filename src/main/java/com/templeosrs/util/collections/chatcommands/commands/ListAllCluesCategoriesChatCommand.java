@@ -1,17 +1,18 @@
 package com.templeosrs.util.collections.chatcommands.commands;
 
+import com.templeosrs.util.collections.CollectionLogCategoryGroup;
 import com.templeosrs.util.collections.chatcommands.ChatCommand;
 import net.runelite.api.events.ChatMessage;
 
 public class ListAllCluesCategoriesChatCommand extends ChatCommand {
     public ListAllCluesCategoriesChatCommand()
     {
-        super("!col help clues", "Lists all available clues categories");
+        super("!col list clues", "Lists all available clues categories", true);
     }
 
     @Override
-    public void execute(ChatMessage event)
+    public void handleCommand(ChatMessage event)
     {
-
+        listAvailableCollectionLogCategories(CollectionLogCategoryGroup.clues);
     }
 }

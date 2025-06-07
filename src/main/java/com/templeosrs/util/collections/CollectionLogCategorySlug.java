@@ -3,7 +3,8 @@ package com.templeosrs.util.collections;
 import lombok.RequiredArgsConstructor;
 
 /**
- * All available categories that can be used on the Player Collection Log endpoint.
+ * Categories that can be used in the chat command.
+ * Note: the command falls back to the input value, so may capture items not in this list if it has not been updated
  *
  * @link <a href="https://templeosrs.com/api/collection-log/category_parameters.php">Full category list</a>
  */

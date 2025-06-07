@@ -112,13 +112,20 @@ public class CollectionLogManager {
      * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
      */
     @Getter
-    private final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+    private static final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
 
     /**
      * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
      */
     @Getter
-    private final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
+    private static final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
+
+    /**
+     * Maps top level tabs (e.g. "Bosses") to their containing categories.
+     * Used to list the available categories when using the "!col help ___" commands
+     */
+    @Getter
+    private static final Map<Integer, Set<String>> collectionLogCategoryTabSlugs = new LinkedHashMap<>();
 
     @Getter
     private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
@@ -146,6 +153,7 @@ public class CollectionLogManager {
             collectionLogItemsFromCache.addAll(collectionLogCacheData.getItemIds());
             collectionLogCategoryItemMap.putAll(collectionLogCacheData.getCategoryItems());
             collectionLogCategoryStructIdMap.putAll(collectionLogCacheData.getCategoryStructIds());
+            collectionLogCategoryTabSlugs.putAll(collectionLogCacheData.getCategorySlugs());
 
             return true;
         });
@@ -336,6 +344,7 @@ public class CollectionLogManager {
         Set<Integer> items = new HashSet<>();
         Map<Integer, Set<Integer>> categoryItems = new HashMap<>();
         Map<String, Integer> categoryStructIds = new HashMap<>();
+        Map<Integer, Set<String>> categorySlugs = new LinkedHashMap<>();
 
         final Pattern specialCharacterPattern = Pattern.compile("['()]", Pattern.CASE_INSENSITIVE);
 
@@ -351,6 +360,8 @@ public class CollectionLogManager {
             // that contains the pointers to sub tabs.
             // ex: https://chisel.weirdgloop.org/structs/index.html?type=structs&id=471
             StructComposition topLevelTabStruct = client.getStructComposition(topLevelTabStructIndex);
+
+            Set<String> singleCategorySlugSet = new LinkedHashSet<>();
 
             // Param 683 contains the pointer to the enum that contains the subtabs ids
             // ex: https://chisel.weirdgloop.org/structs/index.html?type=enums&id=2103
@@ -390,9 +401,12 @@ public class CollectionLogManager {
                 items.addAll(itemSet);
                 categoryItems.put(subtabStructIndex, itemSet);
                 categoryStructIds.put(normalizedCategoryName, subtabStructIndex);
+                singleCategorySlugSet.add(normalizedCategoryName);
             }
+
+            categorySlugs.put(topLevelTabStructIndex, singleCategorySlugSet);
         }
 
-        return new CollectionLogCacheData(items, categoryItems, categoryStructIds);
+        return new CollectionLogCacheData(items, categoryItems, categoryStructIds, categorySlugs);
     }
 }

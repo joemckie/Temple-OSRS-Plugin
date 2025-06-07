@@ -52,18 +52,16 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
     @Inject
     private CollectionLogService collectionLogService;
 
-    @Inject
-    private CollectionLogManager collectionLogManager;
-
     private final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
 
     private final Set<Integer> loadedItemIds = new HashSet<>();
 
     public DisplayPlayerCollectionLogChatCommand() {
-        super("!col ","Displays the player's collection log for a given boss. May also be used to display other players' logs using !col {boss} {player}");
+        super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs using !col {boss} {player}", false);
     }
 
-    public void clearIcons()
+    @Override
+    public void shutDown()
     {
         // 🧼 Clear cached icons and IDs to prevent memory buildup
         itemIconIndexes.clear();
@@ -71,7 +69,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
     }
 
     @Override
-    public void execute(ChatMessage event)
+    public void handleCommand(ChatMessage event)
     {
         final String rawMessage = event.getMessage().trim();
 
@@ -265,11 +263,11 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
         }
 
         try {
-            int structId = collectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
+            int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
 
             StructComposition categoryStruct = client.getStructComposition(structId);
             String categoryTitle = categoryStruct.getStringValue(689);
-            Set<Integer> categoryItems = collectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
+            Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
 
             return new CollectionLogCategory(categoryTitle, categoryItems);
         } catch (NullPointerException e) {

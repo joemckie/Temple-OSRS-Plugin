@@ -72,7 +72,7 @@ public class CollectionLogChatCommandChatMessageSubscriber {
     {
         eventBus.unregister(this);
 
-        displayPlayerCollectionLogChatCommand.clearIcons();
+        chatCommands.values().forEach(ChatCommand::shutDown);
         chatCommands.clear();
     }
 
@@ -93,12 +93,12 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         ChatCommand chatCommand = chatCommands.get(rawMessage.toLowerCase());
 
         if (chatCommand != null) {
-            chatCommand.execute(event);
+            chatCommand.handleCommand(event);
 
             return;
         }
 
-        displayPlayerCollectionLogChatCommand.execute(event);
+        displayPlayerCollectionLogChatCommand.handleCommand(event);
     }
 
     /**
@@ -124,10 +124,15 @@ public class CollectionLogChatCommandChatMessageSubscriber {
             return;
         }
 
-        String COLLECTION_LOG_HELP_TRIGGER = "!col help";
+        Set<String> hiddenChatCommands = Set.of("!col list", "!col help");
 
-        if (message.equalsIgnoreCase(COLLECTION_LOG_HELP_TRIGGER)) {
-            intStack[intStackSize - 3] = 0;
+        for (String hiddenChatCommand : hiddenChatCommands)
+        {
+            if (message.toLowerCase().startsWith(hiddenChatCommand)) {
+                intStack[intStackSize - 3] = 0;
+
+                break;
+            }
         }
     }
 }
