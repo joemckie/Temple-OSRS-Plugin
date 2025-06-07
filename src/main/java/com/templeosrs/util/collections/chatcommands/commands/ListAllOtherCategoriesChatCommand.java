@@ -11,7 +11,7 @@ public class ListAllOtherCategoriesChatCommand extends ChatCommand {
     }
 
     @Override
-    public void handleCommand(ChatMessage event)
+    public void command(ChatMessage event)
     {
         listAvailableCollectionLogCategories(CollectionLogCategoryGroup.other);
     }

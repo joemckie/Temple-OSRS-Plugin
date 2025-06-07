@@ -14,6 +14,13 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
 public abstract class ChatCommand {
+    public ChatCommand(String trigger, String description, boolean onlyShowForLocalPlayer)
+    {
+        this.trigger = trigger;
+        this.description = description;
+        this.onlyShowForLocalPlayer = onlyShowForLocalPlayer;
+    }
+
     @Inject
     protected Client client;
 
@@ -95,17 +102,10 @@ public abstract class ChatCommand {
             return;
         }
 
-        handleCommand(event);
+        command(event);
     }
 
-    public void handleCommand(ChatMessage event) {}
+    public void command(ChatMessage event) {}
 
     public void shutDown() {}
-
-    public ChatCommand(String trigger, String description, boolean onlyShowForLocalPlayer)
-    {
-        this.trigger = trigger;
-        this.description = description;
-        this.onlyShowForLocalPlayer = onlyShowForLocalPlayer;
-    }
 }

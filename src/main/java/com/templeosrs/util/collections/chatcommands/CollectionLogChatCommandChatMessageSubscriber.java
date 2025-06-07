@@ -93,12 +93,12 @@ public class CollectionLogChatCommandChatMessageSubscriber {
         ChatCommand chatCommand = chatCommands.get(rawMessage.toLowerCase());
 
         if (chatCommand != null) {
-            chatCommand.handleCommand(event);
+            chatCommand.command(event);
 
             return;
         }
 
-        displayPlayerCollectionLogChatCommand.handleCommand(event);
+        displayPlayerCollectionLogChatCommand.command(event);
     }
 
     /**

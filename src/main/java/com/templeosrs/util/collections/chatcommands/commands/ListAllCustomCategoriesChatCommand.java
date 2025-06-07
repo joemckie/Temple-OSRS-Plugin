@@ -16,7 +16,7 @@ public class ListAllCustomCategoriesChatCommand extends ChatCommand {
     }
 
     @Override
-    public void handleCommand(ChatMessage event)
+    public void command(ChatMessage event)
     {
         scheduledExecutorService.execute(() -> {
             chatMessageManager.queue(

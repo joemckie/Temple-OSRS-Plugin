@@ -69,7 +69,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
     }
 
     @Override
-    public void handleCommand(ChatMessage event)
+    public void command(ChatMessage event)
     {
         final String rawMessage = event.getMessage().trim();
 
