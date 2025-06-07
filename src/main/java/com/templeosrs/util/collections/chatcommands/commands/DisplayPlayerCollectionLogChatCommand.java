@@ -27,9 +27,11 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j
@@ -135,13 +137,15 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                 return;
             }
 
+            String prettyPlayerName = playerInfo.getUsername();
+
             if (playerInfo.getCollectionLog().getLastChanged() == null) {
                 overwriteMessage(
                     new ChatMessageBuilder()
-                        .append(ChatColorType.HIGHLIGHT)
-                        .append(playerName)
                         .append(ChatColorType.NORMAL)
-                        .append(" has no TempleOSRS collection log.")
+                        .append("No TempleOSRS collection log found for ")
+                        .append(ChatColorType.HIGHLIGHT)
+                        .append(prettyPlayerName)
                         .build(),
                     event.getMessageNode()
                 );
@@ -168,7 +172,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                             .append(ChatColorType.NORMAL)
                             .append("Failed to fetch log for ")
                             .append(ChatColorType.HIGHLIGHT)
-                            .append(playerName)
+                            .append(prettyPlayerName)
                             .append(ChatColorType.NORMAL)
                             .append(".")
                             .build(),
@@ -197,23 +201,23 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
             loadItemIcons(items);
 
-            StringBuilder sb = new StringBuilder();
+            ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
             String categoryName = category.getTitle();
 
             // If sender's name is same as the player being queried, omit the player's name
             if (!event.getName().equalsIgnoreCase(playerName)) {
-                sb
-                        .append("<col=ffffaa>")
-                        .append(playerName)  // Append the original player name here
-                        .append("'s ")
-                        .append(categoryName).append(": ")
-                        .append("</col>");
+                chatMessageBuilder
+                        .append(ChatColorType.HIGHLIGHT)
+                        .append(prettyPlayerName + "'s ")
+                        .append(categoryName)
+                        .append(ChatColorType.NORMAL)
+                        .append(": ");
             } else {
-                sb.append(categoryName).append(": ");
+                chatMessageBuilder.append(categoryName).append(": ");
             }
 
             if (items.isEmpty()) {
-                sb.append("No obtained collection log items.");
+                chatMessageBuilder.append("No obtained collection log items.");
             } else {
                 int i = 0;
 
@@ -222,18 +226,20 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                     Integer icon = itemIconIndexes.get(item.getId());
 
                     if (icon != null) {
-                        sb.append("<img=").append(icon).append("> ");
+                        chatMessageBuilder.img(icon);
                     }
 
-                    sb.append("x").append(item.getCount());
+                    chatMessageBuilder
+                            .append("x")
+                            .append(String.valueOf(item.getCount()));
 
                     if (i++ < items.size() - 1) {
-                        sb.append(", ");
+                        chatMessageBuilder.append(", ");
                     }
                 }
             }
 
-            overwriteMessage(sb.toString(), event.getMessageNode());
+            overwriteMessage(chatMessageBuilder.build(), event.getMessageNode());
         });
     }
 
