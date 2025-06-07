@@ -65,6 +65,7 @@ public class CollectionLogRequestManager extends RequestManager {
                 .addPathSegments("api/player_info.php")
                 .addQueryParameter("player", username)
                 .addQueryParameter("cloginfo", "1")
+                .addQueryParameter("formattedrsn", "1")
                 .build();
 
 

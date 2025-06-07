@@ -117,7 +117,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                 return;
             }
 
-            String prettyPlayerName = playerInfo.getUsername();
+            String prettyPlayerName = playerInfo.getPlayerNameWithCapitalization();
 
             if (playerInfo.getCollectionLog().getLastChanged() == null) {
                 overwriteMessage(
@@ -126,6 +126,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
                         .append("No TempleOSRS collection log found for ")
                         .append(ChatColorType.HIGHLIGHT)
                         .append(prettyPlayerName)
+                        .append(".")
                         .build(),
                     event.getMessageNode()
                 );
