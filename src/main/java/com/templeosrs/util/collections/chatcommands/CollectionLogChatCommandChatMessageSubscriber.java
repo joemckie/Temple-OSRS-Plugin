@@ -12,127 +12,132 @@ import javax.inject.Inject;
 import java.util.*;
 
 @Slf4j
-public class CollectionLogChatCommandChatMessageSubscriber {
-    @Inject
-    private Client client;
+public class CollectionLogChatCommandChatMessageSubscriber
+{
+	@Inject
+	private Client client;
 
-    @Inject
-    private EventBus eventBus;
+	@Inject
+	private EventBus eventBus;
 
-    @Inject
-    private DisplayPlayerCollectionLogChatCommand displayPlayerCollectionLogChatCommand;
+	@Inject
+	private DisplayPlayerCollectionLogChatCommand displayPlayerCollectionLogChatCommand;
 
-    @Inject
-    private ListAllHelpCommandsChatCommand helpCommandsChatCommand;
+	@Inject
+	private ListAllHelpCommandsChatCommand helpCommandsChatCommand;
 
-    @Inject
-    private ListAllBossCategoriesChatCommand bossCategoriesChatCommand;
+	@Inject
+	private ListAllBossCategoriesChatCommand bossCategoriesChatCommand;
 
-    @Inject
-    private ListAllCluesCategoriesChatCommand cluesCategoriesChatCommand;
+	@Inject
+	private ListAllCluesCategoriesChatCommand cluesCategoriesChatCommand;
 
-    @Inject
-    private ListAllRaidsCategoriesChatCommand raidsCategoriesChatCommand;
+	@Inject
+	private ListAllRaidsCategoriesChatCommand raidsCategoriesChatCommand;
 
-    @Inject
-    private ListAllCustomCategoriesChatCommand customCategoriesChatCommand;
+	@Inject
+	private ListAllCustomCategoriesChatCommand customCategoriesChatCommand;
 
-    @Inject
-    private ListAllMinigamesCategoriesChatCommand minigamesCategoriesChatCommand;
+	@Inject
+	private ListAllMinigamesCategoriesChatCommand minigamesCategoriesChatCommand;
 
-    @Inject
-    private ListAllOtherCategoriesChatCommand otherCategoriesChatCommand;
+	@Inject
+	private ListAllOtherCategoriesChatCommand otherCategoriesChatCommand;
 
-    private final Set<ChatMessageType> allowedMessageTypes = Set.of(
-            ChatMessageType.PUBLICCHAT,
-            ChatMessageType.FRIENDSCHAT,
-            ChatMessageType.PRIVATECHAT,
-            ChatMessageType.CLAN_CHAT,
-            ChatMessageType.CLAN_GIM_MESSAGE,
-            ChatMessageType.CLAN_GUEST_CHAT
-    );
+	private final Set<ChatMessageType> allowedMessageTypes = Set.of(
+		ChatMessageType.PUBLICCHAT,
+		ChatMessageType.FRIENDSCHAT,
+		ChatMessageType.PRIVATECHAT,
+		ChatMessageType.CLAN_CHAT,
+		ChatMessageType.CLAN_GIM_MESSAGE,
+		ChatMessageType.CLAN_GUEST_CHAT
+	);
 
-    public static Map<String, ChatCommand> chatCommands = new LinkedHashMap<>();
+	public static Map<String, ChatCommand> chatCommands = new LinkedHashMap<>();
 
-    public void startUp()
-    {
-        eventBus.register(this);
+	public void startUp()
+	{
+		eventBus.register(this);
 
-        chatCommands.put(displayPlayerCollectionLogChatCommand.trigger, displayPlayerCollectionLogChatCommand);
-        chatCommands.put(helpCommandsChatCommand.trigger, helpCommandsChatCommand);
-        chatCommands.put(bossCategoriesChatCommand.trigger, bossCategoriesChatCommand);
-        chatCommands.put(raidsCategoriesChatCommand.trigger, raidsCategoriesChatCommand);
-        chatCommands.put(cluesCategoriesChatCommand.trigger, cluesCategoriesChatCommand);
-        chatCommands.put(minigamesCategoriesChatCommand.trigger, minigamesCategoriesChatCommand);
-        chatCommands.put(otherCategoriesChatCommand.trigger, otherCategoriesChatCommand);
-        chatCommands.put(customCategoriesChatCommand.trigger, customCategoriesChatCommand);
-    }
+		chatCommands.put(displayPlayerCollectionLogChatCommand.trigger, displayPlayerCollectionLogChatCommand);
+		chatCommands.put(helpCommandsChatCommand.trigger, helpCommandsChatCommand);
+		chatCommands.put(bossCategoriesChatCommand.trigger, bossCategoriesChatCommand);
+		chatCommands.put(raidsCategoriesChatCommand.trigger, raidsCategoriesChatCommand);
+		chatCommands.put(cluesCategoriesChatCommand.trigger, cluesCategoriesChatCommand);
+		chatCommands.put(minigamesCategoriesChatCommand.trigger, minigamesCategoriesChatCommand);
+		chatCommands.put(otherCategoriesChatCommand.trigger, otherCategoriesChatCommand);
+		chatCommands.put(customCategoriesChatCommand.trigger, customCategoriesChatCommand);
+	}
 
-    public void shutDown()
-    {
-        eventBus.unregister(this);
+	public void shutDown()
+	{
+		eventBus.unregister(this);
 
-        chatCommands.values().forEach(ChatCommand::shutDown);
-        chatCommands.clear();
-    }
+		chatCommands.values().forEach(ChatCommand::shutDown);
+		chatCommands.clear();
+	}
 
-    @Subscribe(priority = -2) // Run after ChatMessageManager
-    public void onChatMessage(ChatMessage event)
-    {
-        final ChatMessageType type = event.getType();
-        final String rawMessage = event.getMessage().trim();
+	@Subscribe(priority = -2) // Run after ChatMessageManager
+	public void onChatMessage(ChatMessage event)
+	{
+		final ChatMessageType type = event.getType();
+		final String rawMessage = event.getMessage().trim();
 
-        final String COLLECTION_LOG_CHAT_TRIGGER = "!col ";
+		final String COLLECTION_LOG_CHAT_TRIGGER = "!col ";
 
-        // Only react to public, private, or clan chat messages that begin with "!col "
-        if (!allowedMessageTypes.contains(type) || !rawMessage.toLowerCase().startsWith(COLLECTION_LOG_CHAT_TRIGGER))
-        {
-            return;
-        }
+		// Only react to public, private, or clan chat messages that begin with "!col "
+		if (!allowedMessageTypes.contains(type) || !rawMessage.toLowerCase().startsWith(COLLECTION_LOG_CHAT_TRIGGER))
+		{
+			return;
+		}
 
-        ChatCommand chatCommand = chatCommands.get(rawMessage.toLowerCase());
+		ChatCommand chatCommand = chatCommands.get(rawMessage.toLowerCase());
 
-        if (chatCommand != null) {
-            chatCommand.execute(event);
+		if (chatCommand != null)
+		{
+			chatCommand.execute(event);
 
-            return;
-        }
+			return;
+		}
 
-        displayPlayerCollectionLogChatCommand.command(event);
-    }
+		displayPlayerCollectionLogChatCommand.command(event);
+	}
 
-    /**
-     * Prevents the help commands from being rendered to the chat for anyone with the plugin installed
-     */
-    @Subscribe
-    public void onScriptCallbackEvent(ScriptCallbackEvent event)
-    {
-        if (!event.getEventName().equals("chatFilterCheck")) {
-            return;
-        }
+	/**
+	 * Prevents the help commands from being rendered to the chat for anyone with the plugin installed
+	 */
+	@Subscribe
+	public void onScriptCallbackEvent(ScriptCallbackEvent event)
+	{
+		if (!event.getEventName().equals("chatFilterCheck"))
+		{
+			return;
+		}
 
-        int[] intStack = client.getIntStack();
-        int intStackSize = client.getIntStackSize();
-        String[] stringStack = client.getStringStack();
-        int stringStackSize = client.getStringStackSize();
+		int[] intStack = client.getIntStack();
+		int intStackSize = client.getIntStackSize();
+		Object[] objectStack = client.getObjectStack();
+		int objectStackSize = client.getObjectStackSize();
 
-        final int messageType = intStack[intStackSize - 2];
-        String message = stringStack[stringStackSize - 1];
-        ChatMessageType chatMessageType = ChatMessageType.of(messageType);
+		final int messageType = intStack[intStackSize - 2];
+		String message = (String) objectStack[objectStackSize - 1];
+		ChatMessageType chatMessageType = ChatMessageType.of(messageType);
 
-        if (!allowedMessageTypes.contains(chatMessageType)) {
-            return;
-        }
+		if (!allowedMessageTypes.contains(chatMessageType))
+		{
+			return;
+		}
 
-        Set<String> hiddenChatCommands = Set.of("!col list", "!col help");
+		Set<String> hiddenChatCommands = Set.of("!col list", "!col help");
 
-        for (String hiddenChatCommand : hiddenChatCommands)
-        {
-            if (message.toLowerCase().startsWith(hiddenChatCommand)) {
-                intStack[intStackSize - 3] = 0;
+		for (String hiddenChatCommand : hiddenChatCommands)
+		{
+			if (message.toLowerCase().startsWith(hiddenChatCommand))
+			{
+				intStack[intStackSize - 3] = 0;
 
-                break;
-            }
-        }
-    }
+				break;
+			}
+		}
+	}
 }
