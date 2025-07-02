@@ -35,268 +35,285 @@ import java.util.Set;
 @Slf4j
 public class CollectionLogAutoSyncManager
 {
-    @Inject
-    private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
+	@Inject
+	private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
 
-    @Inject
-    private CollectionLogAutoSyncItemContainerChangedSubscriber collectionLogAutoSyncItemContainerChangedSubscriber;
+	@Inject
+	private CollectionLogAutoSyncItemContainerChangedSubscriber collectionLogAutoSyncItemContainerChangedSubscriber;
 
-    @Inject
-    private CollectionLogAutoSyncNpcLootReceivedSubscriber collectionLogAutoSyncNpcLootReceivedSubscriber;
+	@Inject
+	private CollectionLogAutoSyncServerNpcLootSubscriber collectionLogAutoSyncServerNpcLootSubscriber;
 
-    @Inject
-    private CollectionLogAutoSyncGameTickSubscriber collectionLogAutoSyncGameTickSubscriber;
+	@Inject
+	private CollectionLogAutoSyncGameTickSubscriber collectionLogAutoSyncGameTickSubscriber;
 
-    @Inject
-    private CollectionLogAutoSyncConfigChecker collectionLogAutoSyncConfigChecker;
+	@Inject
+	private CollectionLogAutoSyncConfigChecker collectionLogAutoSyncConfigChecker;
 
-    @Inject
-    private LoggedInState loggedInState;
-    
-    @Inject
-    private Client client;
+	@Inject
+	private LoggedInState loggedInState;
 
-    @Inject
-    private ClientThread clientThread;
-    
-    @Inject
-    private EventBus eventBus;
+	@Inject
+	private Client client;
 
-    @Inject
-    private CollectionLogRequestManager requestManager;
+	@Inject
+	private ClientThread clientThread;
 
-    @Inject
-    private CollectionLogManager collectionLogManager;
+	@Inject
+	private EventBus eventBus;
 
-    @Inject
-    private Gson gson;
+	@Inject
+	private CollectionLogRequestManager requestManager;
 
-    @Getter
-    protected final HashSet<String> obtainedItemNames = new HashSet<>();
-    
-    @Getter
-    @Nullable
-    private Integer gameTickToSync;
+	@Inject
+	private CollectionLogManager collectionLogManager;
 
-    @Getter
-    @Setter
-    private boolean triggerSyncAllowed;
+	@Inject
+	private Gson gson;
 
-    @Getter
-    @Setter
-    private boolean logOpenAutoSync;
+	@Getter
+	protected final HashSet<String> obtainedItemNames = new HashSet<>();
 
-    @Getter
-    @Setter
-    private boolean computingDiff;
+	@Getter
+	@Nullable
+	private Integer gameTickToSync;
 
-    @Getter
-    QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
+	@Getter
+	@Setter
+	private boolean triggerSyncAllowed;
 
-    /**
-     * Keeps track of what item IDs are pending a server sync
-     */
-    @Getter
-    protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
+	@Getter
+	@Setter
+	private boolean logOpenAutoSync;
 
-    public void startUp()
-    {
-        eventBus.register(this);
-        eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
-        eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
-        eventBus.register(collectionLogAutoSyncNpcLootReceivedSubscriber);
-        eventBus.register(collectionLogAutoSyncGameTickSubscriber);
-        eventBus.register(collectionLogAutoSyncConfigChecker);
-        eventBus.register(loggedInState);
+	@Getter
+	@Setter
+	private boolean computingDiff;
 
-        collectionLogAutoSyncConfigChecker.startUp();
-    }
+	@Getter
+	QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
 
-    public void shutDown()
-    {
-        eventBus.unregister(this);
-        eventBus.unregister(collectionLogAutoSyncChatMessageSubscriber);
-        eventBus.unregister(collectionLogAutoSyncItemContainerChangedSubscriber);
-        eventBus.unregister(collectionLogAutoSyncNpcLootReceivedSubscriber);
-        eventBus.unregister(collectionLogAutoSyncGameTickSubscriber);
-        eventBus.unregister(collectionLogAutoSyncConfigChecker);
-        eventBus.unregister(loggedInState);
+	/**
+	 * Keeps track of what item IDs are pending a server sync
+	 */
+	@Getter
+	protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
 
-        collectionLogAutoSyncConfigChecker.shutDown();
+	public void startUp()
+	{
+		eventBus.register(this);
+		eventBus.register(collectionLogAutoSyncChatMessageSubscriber);
+		eventBus.register(collectionLogAutoSyncItemContainerChangedSubscriber);
+		eventBus.register(collectionLogAutoSyncServerNpcLootSubscriber);
+		eventBus.register(collectionLogAutoSyncGameTickSubscriber);
+		eventBus.register(collectionLogAutoSyncConfigChecker);
+		eventBus.register(loggedInState);
 
-        obtainedItemNames.clear();
-        clearSyncCountdown();
-    }
+		collectionLogAutoSyncConfigChecker.startUp();
+	}
 
-    @Subscribe
-    public void onWidgetLoaded(WidgetLoaded widgetLoaded)
-    {
-        if (widgetLoaded.getGroupId() == InterfaceID.COLLECTION) {
-            setLogOpenAutoSync(true);
-            setTriggerSyncAllowed(true);
+	public void shutDown()
+	{
+		eventBus.unregister(this);
+		eventBus.unregister(collectionLogAutoSyncChatMessageSubscriber);
+		eventBus.unregister(collectionLogAutoSyncItemContainerChangedSubscriber);
+		eventBus.unregister(collectionLogAutoSyncServerNpcLootSubscriber);
+		eventBus.unregister(collectionLogAutoSyncGameTickSubscriber);
+		eventBus.unregister(collectionLogAutoSyncConfigChecker);
+		eventBus.unregister(loggedInState);
 
-            // Clear the previously obtained item list to avoid duplicating items when counts change
-            collectionLogManager.getObtainedCollectionLogItems().clear();
-        }
-    }
+		collectionLogAutoSyncConfigChecker.shutDown();
 
-    @Subscribe
-    public void onScriptPostFired(ScriptPostFired scriptPostFired) {
-        if (scriptPostFired.getScriptId() == 7797 && isTriggerSyncAllowed()) {
-            clientThread.invokeLater(() -> {
-                client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
-                client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Back", null);
+		obtainedItemNames.clear();
+		clearSyncCountdown();
+	}
 
-                setTriggerSyncAllowed(false);
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded widgetLoaded)
+	{
+		if (widgetLoaded.getGroupId() == InterfaceID.COLLECTION)
+		{
+			setLogOpenAutoSync(true);
+			setTriggerSyncAllowed(true);
 
-                gameTickToSync = client.getTickCount() + 3;
-            });
-        }
-    }
+			// Clear the previously obtained item list to avoid duplicating items when counts change
+			collectionLogManager.getObtainedCollectionLogItems().clear();
+		}
+	}
 
-    /**
-     * Starts the sync countdown.
-     * This utilises a 17-tick delay (which corresponds to a roughly 10-second wait) as a way to batch requests.
-     * This is useful for when multiple items are obtained in quick succession, such as Chompy Hats.
-     */
-    public void startSyncCountdown()
-    {
-        final int syncDelayInTicks = 17;
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired scriptPostFired)
+	{
+		if (scriptPostFired.getScriptId() == 7797 && isTriggerSyncAllowed())
+		{
+			clientThread.invokeLater(() -> {
+				client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
+				client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Back", null);
 
-        gameTickToSync = client.getTickCount() + syncDelayInTicks;
-    }
+				setTriggerSyncAllowed(false);
 
-    /**
-     * Resets the sync countdown.
-     * Used after the request has successfully completed.
-     */
-    public void clearSyncCountdown()
-    {
-        backoffStrategy.reset();
-        setLogOpenAutoSync(false);
-        gameTickToSync = null;
-    }
+				gameTickToSync = client.getTickCount() + 3;
+			});
+		}
+	}
 
-    public void computeCollectionLogDiff()
-    {
-        try {
-            String username = client.getLocalPlayer().getName();
+	/**
+	 * Starts the sync countdown.
+	 * This utilises a 17-tick delay (which corresponds to a roughly 10-second wait) as a way to batch requests.
+	 * This is useful for when multiple items are obtained in quick succession, such as Chompy Hats.
+	 */
+	public void startSyncCountdown()
+	{
+		final int syncDelayInTicks = 17;
 
-            if (username == null || !CollectionDatabase.hasPlayerData(username))
-            {
-                log.debug("No saved log items were found, falling back to a full sync for {}", username);
+		gameTickToSync = client.getTickCount() + syncDelayInTicks;
+	}
 
-                clearSyncCountdown();
+	/**
+	 * Resets the sync countdown.
+	 * Used after the request has successfully completed.
+	 */
+	public void clearSyncCountdown()
+	{
+		backoffStrategy.reset();
+		setLogOpenAutoSync(false);
+		gameTickToSync = null;
+	}
 
-                return;
-            }
+	public void computeCollectionLogDiff()
+	{
+		try
+		{
+			String username = client.getLocalPlayer().getName();
 
-            log.debug("Computing collection log diff for {}", username);
+			if (username == null || !CollectionDatabase.hasPlayerData(username))
+			{
+				log.debug("No saved log items were found, falling back to a full sync for {}", username);
 
-            Set<ObtainedCollectionItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
+				clearSyncCountdown();
 
-            final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
+				return;
+			}
 
-            for (ObtainedCollectionItem item : obtainedCollectionLogItems)
-            {
-                final int itemId = item.getId();
-                final int itemCount = item.getCount();
+			log.debug("Computing collection log diff for {}", username);
 
-                collectionLogItemIdCountMap.add(itemId, itemCount);
-            }
+			Set<ObtainedCollectionItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
 
-            final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
+			final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
-            if (itemDiff == null || itemDiff.isEmpty()) {
-                log.debug("No log items have been changed since the last sync for {}", username);
+			for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+			{
+				final int itemId = item.getId();
+				final int itemCount = item.getCount();
 
-                // No items to sync, stop processing
-                clearSyncCountdown();
+				collectionLogItemIdCountMap.add(itemId, itemCount);
+			}
 
-                return;
-            }
+			final Multiset<Integer> itemDiff = CollectionDatabase.getCollectionLogDiff(username, collectionLogItemIdCountMap);
 
-            log.debug("Found {} changed log item(s) since the last sync: {}", itemDiff.elementSet().size(), itemDiff);
+			if (itemDiff == null || itemDiff.isEmpty())
+			{
+				log.debug("No log items have been changed since the last sync for {}", username);
 
-            // Add the log items found in the diff to the pending sync items set
-            obtainedCollectionLogItems
-                .stream()
-                // Name check isn't technically needed here, but it helps suppress warnings
-                .filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
-                .map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
-                .forEach(pendingSyncItems::add);
-        } finally {
-            setComputingDiff(false);
-        }
-    }
+				// No items to sync, stop processing
+				clearSyncCountdown();
 
-    /**
-     * Uploads the obtained collection log items to the server.
-     * This is called when the sync countdown has completed and there are items pending a sync.
-     */
-    @Synchronized
-    public void uploadObtainedCollectionLogItems()
-    {
-        if (backoffStrategy.shouldSkipRequest()) {
-            return;
-        }
+				return;
+			}
 
-        String username = client.getLocalPlayer().getName();
+			log.debug("Found {} changed log item(s) since the last sync: {}", itemDiff.elementSet().size(), itemDiff);
 
-        if (username == null) {
-            return;
-        }
+			// Add the log items found in the diff to the pending sync items set
+			obtainedCollectionLogItems
+				.stream()
+				// Name check isn't technically needed here, but it helps suppress warnings
+				.filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
+				.map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
+				.forEach(pendingSyncItems::add);
+		}
+		finally
+		{
+			setComputingDiff(false);
+		}
+	}
 
-        RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
-        PlayerProfile profileKey = new PlayerProfile(username, profileType);
-        
-        PlayerDataSync submission = new PlayerDataSync(
-            profileKey.getUsername(),
-            profileKey.getProfileType().name(),
-            client.getAccountHash(),
-            pendingSyncItems
-        );
+	/**
+	 * Uploads the obtained collection log items to the server.
+	 * This is called when the sync countdown has completed and there are items pending a sync.
+	 */
+	@Synchronized
+	public void uploadObtainedCollectionLogItems()
+	{
+		if (backoffStrategy.shouldSkipRequest())
+		{
+			return;
+		}
 
-        try {
-            String response = requestManager.uploadObtainedCollectionLogItems(submission);
+		String username = client.getLocalPlayer().getName();
 
-            CollectionLogSyncResponse collectionLogSyncResponse = gson.fromJson(response, CollectionLogSyncResponse.class);
-            String lastChangedTimestamp = getLastChangedTimestamp(collectionLogSyncResponse, response);
+		if (username == null)
+		{
+			return;
+		}
 
-            log.debug("response: {}, lastChanged: {}", response, lastChangedTimestamp);
+		RuneScapeProfileType profileType = RuneScapeProfileType.getCurrent(client);
+		PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
-            // Saves the new/updated items to the API cache to prevent refetching the entire log
-            CollectionDatabase.upsertItemsBatch(username, pendingSyncItems, Timestamp.valueOf(lastChangedTimestamp));
+		PlayerDataSync submission = new PlayerDataSync(
+			profileKey.getUsername(),
+			profileKey.getProfileType().name(),
+			client.getAccountHash(),
+			pendingSyncItems
+		);
 
-            obtainedItemNames.clear();
-            pendingSyncItems.clear();
+		try
+		{
+			String response = requestManager.uploadObtainedCollectionLogItems(submission);
 
-            clearSyncCountdown();
+			CollectionLogSyncResponse collectionLogSyncResponse = gson.fromJson(response, CollectionLogSyncResponse.class);
+			String lastChangedTimestamp = getLastChangedTimestamp(collectionLogSyncResponse, response);
 
-            log.debug("Successfully synchronised new log items for {}", submission.getUsername());
-        } catch (IOException | NullPointerException e) {
-            log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
-        } finally {
-            backoffStrategy.finishCycle();
-        }
-    }
+			log.debug("response: {}, lastChanged: {}", response, lastChangedTimestamp);
 
-    private String getLastChangedTimestamp(CollectionLogSyncResponse collectionLogSyncResponse, String response) throws IOException {
-        APIError error = collectionLogSyncResponse.getError();
-        CollectionLogSyncResponse.Data data = collectionLogSyncResponse.getData();
+			// Saves the new/updated items to the API cache to prevent refetching the entire log
+			CollectionDatabase.upsertItemsBatch(username, pendingSyncItems, Timestamp.valueOf(lastChangedTimestamp));
 
-        if (error == null && data == null) {
-            clearSyncCountdown();
+			obtainedItemNames.clear();
+			pendingSyncItems.clear();
 
-            throw new NullPointerException("Unexpected response format from the collection log sync endpoint: " + response);
-        }
+			clearSyncCountdown();
 
-        if (error != null) {
-            clearSyncCountdown();
+			log.debug("Successfully synchronised new log items for {}", submission.getUsername());
+		}
+		catch (IOException | NullPointerException e)
+		{
+			log.error("❌ Failed to upload obtained collection log items: {}", e.getMessage());
+		}
+		finally
+		{
+			backoffStrategy.finishCycle();
+		}
+	}
 
-            throw new IOException(String.valueOf(error));
-        }
+	private String getLastChangedTimestamp(CollectionLogSyncResponse collectionLogSyncResponse, String response) throws IOException
+	{
+		APIError error = collectionLogSyncResponse.getError();
+		CollectionLogSyncResponse.Data data = collectionLogSyncResponse.getData();
 
-        return data.getLastChanged();
-    }
+		if (error == null && data == null)
+		{
+			clearSyncCountdown();
+
+			throw new NullPointerException("Unexpected response format from the collection log sync endpoint: " + response);
+		}
+
+		if (error != null)
+		{
+			clearSyncCountdown();
+
+			throw new IOException(String.valueOf(error));
+		}
+
+		return data.getLastChanged();
+	}
 }
