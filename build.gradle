@@ -32,7 +32,7 @@ dependencies {
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
     testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
 
-    testImplementation(group: 'com.google.inject.extensions', name:'guice-testlib', version: "4.1.0") {
+    testImplementation(group: 'com.google.inject.extensions', name: 'guice-testlib', version: "4.1.0") {
         exclude group: 'com.google.inject', module: 'guice' // already provided by runelite
     }
 

@@ -1,49 +1,29 @@
 package com.templeosrs.util.collections.chatcommands;
 
-import com.templeosrs.util.collections.chatcommands.commands.*;
+import com.templeosrs.util.collections.chatcommands.commands.DisplayPlayerCollectionLogChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllBossCategoriesChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllCluesCategoriesChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllCustomCategoriesChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllHelpCommandsChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllMinigamesCategoriesChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllOtherCategoriesChatCommand;
+import com.templeosrs.util.collections.chatcommands.commands.ListAllRaidsCategoriesChatCommand;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.ScriptCallbackEvent;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 
-import javax.inject.Inject;
-import java.util.*;
-
 @Slf4j
 public class CollectionLogChatCommandChatMessageSubscriber
 {
-	@Inject
-	private Client client;
-
-	@Inject
-	private EventBus eventBus;
-
-	@Inject
-	private DisplayPlayerCollectionLogChatCommand displayPlayerCollectionLogChatCommand;
-
-	@Inject
-	private ListAllHelpCommandsChatCommand helpCommandsChatCommand;
-
-	@Inject
-	private ListAllBossCategoriesChatCommand bossCategoriesChatCommand;
-
-	@Inject
-	private ListAllCluesCategoriesChatCommand cluesCategoriesChatCommand;
-
-	@Inject
-	private ListAllRaidsCategoriesChatCommand raidsCategoriesChatCommand;
-
-	@Inject
-	private ListAllCustomCategoriesChatCommand customCategoriesChatCommand;
-
-	@Inject
-	private ListAllMinigamesCategoriesChatCommand minigamesCategoriesChatCommand;
-
-	@Inject
-	private ListAllOtherCategoriesChatCommand otherCategoriesChatCommand;
-
+	public static Map<String, ChatCommand> chatCommands = new LinkedHashMap<>();
 	private final Set<ChatMessageType> allowedMessageTypes = Set.of(
 		ChatMessageType.PUBLICCHAT,
 		ChatMessageType.FRIENDSCHAT,
@@ -52,8 +32,26 @@ public class CollectionLogChatCommandChatMessageSubscriber
 		ChatMessageType.CLAN_GIM_MESSAGE,
 		ChatMessageType.CLAN_GUEST_CHAT
 	);
-
-	public static Map<String, ChatCommand> chatCommands = new LinkedHashMap<>();
+	@Inject
+	private Client client;
+	@Inject
+	private EventBus eventBus;
+	@Inject
+	private DisplayPlayerCollectionLogChatCommand displayPlayerCollectionLogChatCommand;
+	@Inject
+	private ListAllHelpCommandsChatCommand helpCommandsChatCommand;
+	@Inject
+	private ListAllBossCategoriesChatCommand bossCategoriesChatCommand;
+	@Inject
+	private ListAllCluesCategoriesChatCommand cluesCategoriesChatCommand;
+	@Inject
+	private ListAllRaidsCategoriesChatCommand raidsCategoriesChatCommand;
+	@Inject
+	private ListAllCustomCategoriesChatCommand customCategoriesChatCommand;
+	@Inject
+	private ListAllMinigamesCategoriesChatCommand minigamesCategoriesChatCommand;
+	@Inject
+	private ListAllOtherCategoriesChatCommand otherCategoriesChatCommand;
 
 	public void startUp()
 	{
