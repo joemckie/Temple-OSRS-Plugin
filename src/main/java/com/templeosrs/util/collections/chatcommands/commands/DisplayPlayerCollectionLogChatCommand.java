@@ -190,17 +190,25 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
             String categoryName = category.getTitle();
 
-            // If sender's name is same as the player being queried, omit the player's name
-            if (!event.getName().equalsIgnoreCase(playerName)) {
-                chatMessageBuilder
-                        .append(ChatColorType.HIGHLIGHT)
-                        .append(prettyPlayerName + "'s ")
-                        .append(categoryName)
-                        .append(ChatColorType.NORMAL)
-                        .append(": ");
-            } else {
-                chatMessageBuilder.append(categoryName).append(": ");
-            }
+
+			// If sender's name is same as the player being queried, omit the player's name
+			if (!event.getName().equalsIgnoreCase(playerName))
+			{
+				chatMessageBuilder
+					.append(ChatColorType.HIGHLIGHT)
+					.append(prettyPlayerName + "'s ")
+					.append(categoryName)
+					.append(ChatColorType.NORMAL)
+					.append(getLogProgress(items.size(), category.getItems().size()))
+					.append(": ");
+			}
+			else
+			{
+				chatMessageBuilder
+					.append(categoryName)
+					.append(getLogProgress(items.size(), category.getItems().size()))
+					.append(": ");
+			}
 
             if (items.isEmpty()) {
                 chatMessageBuilder.append("No obtained collection log items.");
@@ -288,9 +296,21 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             String categoryTitle = categoryStruct.getStringValue(689);
             Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
 
-            return new CollectionLogCategory(categoryTitle,categoryItems);
-        } catch (NullPointerException e) {
-            return null;
-        }
-    }
+			return new CollectionLogCategory(categoryTitle, categoryItems);
+		}
+		catch (NullPointerException e)
+		{
+			return null;
+		}
+	}
+
+	private String getLogProgress(int acquiredItemsCount, int totalItemsCount)
+	{
+		if (acquiredItemsCount == 0)
+		{
+			return "";
+		}
+
+		return " (" + acquiredItemsCount + "/" + totalItemsCount + ")";
+	}
 }
