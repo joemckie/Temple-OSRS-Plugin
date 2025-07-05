@@ -207,11 +207,15 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand
 					.append(prettyPlayerName + "'s ")
 					.append(categoryName)
 					.append(ChatColorType.NORMAL)
+					.append(getLogProgress(items.size(), category.getItems().size()))
 					.append(": ");
 			}
 			else
 			{
-				chatMessageBuilder.append(categoryName).append(": ");
+				chatMessageBuilder
+					.append(categoryName)
+					.append(getLogProgress(items.size(), category.getItems().size()))
+					.append(": ");
 			}
 
 			if (items.isEmpty())
@@ -321,5 +325,15 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand
 		{
 			return null;
 		}
+	}
+
+	private String getLogProgress(int acquiredItemsCount, int totalItemsCount)
+	{
+		if (acquiredItemsCount == 0)
+		{
+			return "";
+		}
+
+		return " (" + acquiredItemsCount + "/" + totalItemsCount + ")";
 	}
 }
