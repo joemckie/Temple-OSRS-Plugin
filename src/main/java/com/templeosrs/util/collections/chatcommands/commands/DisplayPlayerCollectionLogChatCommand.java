@@ -198,17 +198,16 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 					.append(ChatColorType.HIGHLIGHT)
 					.append(prettyPlayerName + "'s ")
 					.append(categoryName)
-					.append(ChatColorType.NORMAL)
-					.append(getLogProgress(items.size(), category.getItems().size()))
-					.append(": ");
+					.append(ChatColorType.NORMAL);
 			}
 			else
 			{
-				chatMessageBuilder
-					.append(categoryName)
-					.append(getLogProgress(items.size(), category.getItems().size()))
-					.append(": ");
+				chatMessageBuilder.append(categoryName);
 			}
+
+			chatMessageBuilder
+				.append(getLogProgress(items.size(), category.getItems().size()))
+				.append(": ");
 
             if (items.isEmpty()) {
                 chatMessageBuilder.append("No obtained collection log items.");
