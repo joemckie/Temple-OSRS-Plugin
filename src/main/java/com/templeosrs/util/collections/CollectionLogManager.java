@@ -31,6 +31,7 @@ import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
 import com.templeosrs.util.collections.data.*;
 import com.templeosrs.util.collections.database.CollectionDatabase;
+import com.templeosrs.util.collections.menucommand.CollectionLogMenuCommandSubscriber;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
@@ -94,6 +95,9 @@ public class CollectionLogManager
 	private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
 	@Inject
+	private CollectionLogMenuCommandSubscriber collectionLogMenuCommandSubscriber;
+
+	@Inject
 	private CollectionLogRequestManager collectionLogRequestManager;
 
 	@Nullable
@@ -143,6 +147,11 @@ public class CollectionLogManager
 		if (templeOSRSPlugin.getConfig().enableClogChatCommand())
 		{
 			collectionLogChatCommandChatMessageSubscriber.startUp();
+		}
+
+		if (templeOSRSPlugin.getConfig().enablePlayerMenuLookup())
+		{
+			collectionLogMenuCommandSubscriber.startUp();
 		}
 
 		if (templeOSRSPlugin.getConfig().autoSyncClog())
@@ -203,6 +212,15 @@ public class CollectionLogManager
 		else
 		{
 			collectionLogAutoSyncManager.shutDown();
+		}
+
+		if (templeOSRSPlugin.getConfig().enablePlayerMenuLookup())
+		{
+			collectionLogMenuCommandSubscriber.startUp();
+		}
+		else
+		{
+			collectionLogMenuCommandSubscriber.shutDown();
 		}
 	}
 
