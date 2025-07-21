@@ -286,9 +286,9 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
             StructComposition categoryStruct = client.getStructComposition(structId);
             String categoryTitle = categoryStruct.getStringValue(689);
-            Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
+            Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(categoryStruct.getId()).getItems();
 
-            return new CollectionLogCategory(categoryTitle,categoryItems);
+            return new CollectionLogCategory(categoryTitle, categoryItems);
         } catch (NullPointerException e) {
             return null;
         }

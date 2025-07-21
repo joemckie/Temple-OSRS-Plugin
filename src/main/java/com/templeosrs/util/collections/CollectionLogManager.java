@@ -31,7 +31,7 @@ import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
 import com.templeosrs.util.collections.data.*;
 import com.templeosrs.util.collections.database.CollectionDatabase;
-import com.templeosrs.util.collections.menucommand.CollectionLogMenuCommandSubscriber;
+import com.templeosrs.util.collections.playerlookup.CollectionLogPlayerLookupManager;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
 import lombok.Getter;
@@ -95,7 +95,7 @@ public class CollectionLogManager
 	private CollectionLogChatCommandChatMessageSubscriber collectionLogChatCommandChatMessageSubscriber;
 
 	@Inject
-	private CollectionLogMenuCommandSubscriber collectionLogMenuCommandSubscriber;
+	private CollectionLogPlayerLookupManager collectionLogPlayerLookupManager;
 
 	@Inject
 	private CollectionLogRequestManager collectionLogRequestManager;
@@ -106,7 +106,8 @@ public class CollectionLogManager
 	/**
 	 * List of items found in the collection log, computed by reading the in-game enums/structs.
 	 */
-	private final Set<Integer> collectionLogItemsFromCache = new HashSet<>();
+	@Getter
+	private static final Set<Integer> allCollectionLogItems = new HashSet<>();
 
 	/**
 	 * Unique list of all obtained collection log items
@@ -120,7 +121,7 @@ public class CollectionLogManager
 	 * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
 	 */
 	@Getter
-	private static final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+	private static final Map<Integer, CollectionLogCategory> collectionLogCategoryMap = new LinkedHashMap<>();
 
 	/**
 	 * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
@@ -151,7 +152,7 @@ public class CollectionLogManager
 
 		if (templeOSRSPlugin.getConfig().enablePlayerMenuLookup())
 		{
-			collectionLogMenuCommandSubscriber.startUp();
+			collectionLogPlayerLookupManager.startUp();
 		}
 
 		if (templeOSRSPlugin.getConfig().autoSyncClog())
@@ -167,8 +168,8 @@ public class CollectionLogManager
 
 			CollectionLogCacheData collectionLogCacheData = parseCacheForClog();
 
-			collectionLogItemsFromCache.addAll(collectionLogCacheData.getItemIds());
-			collectionLogCategoryItemMap.putAll(collectionLogCacheData.getCategoryItems());
+			allCollectionLogItems.addAll(collectionLogCacheData.getItemIds());
+			collectionLogCategoryMap.putAll(collectionLogCacheData.getCategories());
 			collectionLogCategoryStructIdMap.putAll(collectionLogCacheData.getCategoryStructIds());
 			collectionLogCategoryTabSlugs.putAll(collectionLogCacheData.getCategorySlugs());
 
@@ -193,8 +194,8 @@ public class CollectionLogManager
 		syncButtonManager.shutDown();
 
 		obtainedCollectionLogItems.clear();
-		collectionLogItemsFromCache.clear();
-		collectionLogCategoryItemMap.clear();
+		allCollectionLogItems.clear();
+		collectionLogCategoryMap.clear();
 	}
 
 	@Subscribe
@@ -216,11 +217,11 @@ public class CollectionLogManager
 
 		if (templeOSRSPlugin.getConfig().enablePlayerMenuLookup())
 		{
-			collectionLogMenuCommandSubscriber.startUp();
+			collectionLogPlayerLookupManager.startUp();
 		}
 		else
 		{
-			collectionLogMenuCommandSubscriber.shutDown();
+			collectionLogPlayerLookupManager.shutDown();
 		}
 	}
 
@@ -256,7 +257,8 @@ public class CollectionLogManager
 			case LOGGED_IN:
 			{
 				// Attempt to synchronise the player's collection log on login
-				clientThread.invokeLater(() -> {
+				clientThread.invokeLater(() ->
+				{
 					final String username = client.getLocalPlayer().getName();
 
 					// Wait for username to be available
@@ -304,7 +306,7 @@ public class CollectionLogManager
 	{
 		if (preFired.getScriptId() == 4100)
 		{
-			if (collectionLogItemsFromCache.isEmpty())
+			if (allCollectionLogItems.isEmpty())
 			{
 				return;
 			}
@@ -379,7 +381,7 @@ public class CollectionLogManager
 			.map(item -> new ObtainedCollectionItem(item.getId(), item.getCount()))
 			.collect(Collectors.toSet());
 
-		int totalCollectionsAvailable = collectionLogItemsFromCache.size();
+		int totalCollectionsAvailable = allCollectionLogItems.size();
 
 		PlayerData playerData = new PlayerData(totalCollectionsAvailable, preparedItems);
 
@@ -414,7 +416,7 @@ public class CollectionLogManager
 	private CollectionLogCacheData parseCacheForClog()
 	{
 		Set<Integer> items = new HashSet<>();
-		Map<Integer, Set<Integer>> categoryItems = new HashMap<>();
+		Map<Integer, CollectionLogCategory> categories = new LinkedHashMap<>();
 		Map<String, Integer> categoryStructIds = new HashMap<>();
 		Map<Integer, Set<String>> categorySlugs = new LinkedHashMap<>();
 
@@ -449,12 +451,13 @@ public class CollectionLogManager
 				StructComposition subtabStruct = client.getStructComposition(subtabStructIndex);
 
 				int[] clogItems = client.getEnum(subtabStruct.getIntValue(690)).getIntVals();
+				String title = subtabStruct.getStringValue(689);
 
 				// Gets a slugified version of the category title
 				// (e.g. Master Treasure Trails (Rare) -> master_treasure_trails_rare)
 				String normalizedCategoryName = specialCharacterPattern
 					.matcher(
-						subtabStruct.getStringValue(689)
+						title
 							.toLowerCase()
 							.replaceAll(" ", "_")
 					)
@@ -474,7 +477,7 @@ public class CollectionLogManager
 				}
 
 				items.addAll(itemSet);
-				categoryItems.put(subtabStructIndex, itemSet);
+				categories.put(subtabStructIndex, new CollectionLogCategory(title, itemSet));
 				categoryStructIds.put(normalizedCategoryName, subtabStructIndex);
 				singleCategorySlugSet.add(normalizedCategoryName);
 			}
@@ -482,6 +485,6 @@ public class CollectionLogManager
 			categorySlugs.put(topLevelTabStructIndex, singleCategorySlugSet);
 		}
 
-		return new CollectionLogCacheData(items, categoryItems, categoryStructIds, categorySlugs);
+		return new CollectionLogCacheData(items, categories, categoryStructIds, categorySlugs);
 	}
 }

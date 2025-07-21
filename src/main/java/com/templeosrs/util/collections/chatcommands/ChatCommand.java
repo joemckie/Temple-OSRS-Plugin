@@ -19,7 +19,6 @@ import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
@@ -127,7 +126,7 @@ public abstract class ChatCommand {
 
 			List<Integer> iconItemIds = categorySlugs.stream().map(slug -> {
 				int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(slug);
-				Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(structId);
+				Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(structId).getItems();
 
 				return new ArrayList<>(categoryItems).get(0);
 			}).collect(Collectors.toList());
@@ -178,14 +177,17 @@ public abstract class ChatCommand {
 		// Starting with an empty list, we find which icons haven't previously been seen
 		List<Integer> newItems = new ArrayList<>();
 
-		for (int itemId : iconItemIds) {
-			if (!loadedItemIds.contains(itemId)) {
+		for (int itemId : iconItemIds)
+		{
+			if (!loadedItemIds.contains(itemId))
+			{
 				newItems.add(itemId);
 				loadedItemIds.add(itemId);
 			}
 		}
 
-		if (newItems.isEmpty()) {
+		if (newItems.isEmpty())
+		{
 			return;
 		}
 
@@ -200,7 +202,8 @@ public abstract class ChatCommand {
 
 		int i = 0;
 
-		for (int itemId : iconItemIds) {
+		for (int itemId : iconItemIds)
+		{
 			final AsyncBufferedImage img = itemManager.getImage(itemId);
 			final int idx = iconIndex + i++;
 

@@ -1,6 +1,6 @@
 package com.templeosrs.util.collections.utils;
 
-import lombok.Value;
+import com.templeosrs.util.collections.data.CollectionLogCategory;import lombok.Value;
 
 import java.util.Map;
 import java.util.Set;
@@ -8,7 +8,7 @@ import java.util.Set;
 @Value
 public class CollectionLogCacheData {
     Set<Integer> itemIds;
-    Map<Integer, Set<Integer>> categoryItems;
+    Map<Integer, CollectionLogCategory> categories;
     Map<String, Integer> categoryStructIds;
     Map<Integer, Set<String>> categorySlugs;
 }

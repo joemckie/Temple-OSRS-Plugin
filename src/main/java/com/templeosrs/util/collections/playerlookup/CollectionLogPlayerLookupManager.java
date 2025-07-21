@@ -1,9 +1,12 @@
-package com.templeosrs.util.collections.menucommand;
+package com.templeosrs.util.collections.playerlookup;
 
+import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.inject.Provider;
+import javax.swing.SwingUtilities;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
@@ -15,10 +18,13 @@ import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.menus.MenuManager;
+import net.runelite.client.ui.ClientToolbar;
+import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 @Slf4j
-public class CollectionLogMenuCommandSubscriber
+public class CollectionLogPlayerLookupManager
 {
 	@Inject
 	private Client client;
@@ -35,13 +41,30 @@ public class CollectionLogMenuCommandSubscriber
 	@Inject
 	private ScheduledExecutorService scheduledExecutorService;
 
+	@Inject
+	private CollectionLogPlayerLookupPanel collectionLogPlayerLookupPanel;
+
+	@Inject
+	private ClientToolbar clientToolbar;
+
 	private final String MENU_OPTION_NAME = "Collection log";
+
+	private NavigationButton navigationButton;
 
 	public void startUp()
 	{
 		eventBus.register(this);
 
 		menuManager.get().addPlayerMenuItem(MENU_OPTION_NAME);
+
+		navigationButton = NavigationButton.builder()
+			.tooltip("TempleOSRS Collection Log")
+			.icon(ImageUtil.loadImageResource(TempleOSRSPlugin.class, "skills/skill_icon_ehp.png"))
+			.priority(5)
+			.panel(collectionLogPlayerLookupPanel)
+			.build();
+
+		clientToolbar.addNavigation(navigationButton);
 	}
 
 	public void shutDown()
@@ -49,6 +72,18 @@ public class CollectionLogMenuCommandSubscriber
 		eventBus.unregister(this);
 
 		menuManager.get().removePlayerMenuItem(MENU_OPTION_NAME);
+
+		clientToolbar.removeNavigation(navigationButton);
+	}
+
+	private void lookupPlayer(@NonNull String username)
+	{
+		SwingUtilities.invokeLater(
+			() -> {
+				clientToolbar.openPanel(navigationButton);
+				collectionLogPlayerLookupPanel.lookup("cousinofkos");
+			}
+		);
 	}
 
 	@Subscribe
@@ -79,14 +114,8 @@ public class CollectionLogMenuCommandSubscriber
 				.setIdentifier(event.getIdentifier())
 				.onClick(e ->
 				{
-					String target = Text.removeTags(e.getTarget()).toLowerCase();
-
-					scheduledExecutorService.execute(() ->
-					{
-						String json = collectionLogRequestManager.getPlayerCollectionLog(target);
-
-						log.debug(json);
-					});
+					String target = Text.removeTags(e.getTarget());
+					lookupPlayer(target);
 				});
 		}
 	}
@@ -110,13 +139,7 @@ public class CollectionLogMenuCommandSubscriber
 				return;
 			}
 
-			scheduledExecutorService.execute(() ->
-			{
-				String normalizedPlayerName = target.toLowerCase();
-				String json = collectionLogRequestManager.getPlayerCollectionLog(normalizedPlayerName);
-
-				log.debug(json);
-			});
+			lookupPlayer(target);
 		}
 	}
 }
