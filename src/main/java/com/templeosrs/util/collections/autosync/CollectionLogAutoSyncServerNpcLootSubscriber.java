@@ -1,6 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ServerNpcLoot;
@@ -40,7 +40,7 @@ public class CollectionLogAutoSyncServerNpcLootSubscriber
 
 			if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName))
 			{
-				collectionLogAutoSyncManager.pendingSyncItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount));
+				collectionLogAutoSyncManager.pendingSyncItems.add(new CollectionLogItem(itemId, itemName, itemCount));
 				collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
 			}
 		});

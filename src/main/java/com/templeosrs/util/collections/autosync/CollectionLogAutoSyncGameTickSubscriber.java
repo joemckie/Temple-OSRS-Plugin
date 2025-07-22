@@ -2,7 +2,7 @@ package com.templeosrs.util.collections.autosync;
 
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.events.GameTick;
@@ -47,7 +47,7 @@ public class CollectionLogAutoSyncGameTickSubscriber
         }
 
         final Integer gameTickToSync = collectionLogAutoSyncManager.getGameTickToSync();
-        final HashSet<ObtainedCollectionItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
+        final HashSet<CollectionLogItem> pendingSyncItems = collectionLogAutoSyncManager.getPendingSyncItems();
 
         // Add any diffed items to the pendingSync list when the log has been opened
         if (

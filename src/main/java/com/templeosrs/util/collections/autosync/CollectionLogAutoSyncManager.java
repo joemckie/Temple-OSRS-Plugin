@@ -7,11 +7,11 @@ import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.data.CollectionLogSyncResponse;
-import lombok.Getter;
+import java.util.Map;import lombok.Getter;
 import lombok.Setter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
@@ -97,7 +97,7 @@ public class CollectionLogAutoSyncManager
 	 * Keeps track of what item IDs are pending a server sync
 	 */
 	@Getter
-	protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
+	protected final HashSet<CollectionLogItem> pendingSyncItems = new HashSet<>();
 
 	public void startUp()
 	{
@@ -135,9 +135,6 @@ public class CollectionLogAutoSyncManager
 		{
 			setLogOpenAutoSync(true);
 			setTriggerSyncAllowed(true);
-
-			// Clear the previously obtained item list to avoid duplicating items when counts change
-			collectionLogManager.getObtainedCollectionLogItems().clear();
 		}
 	}
 
@@ -197,14 +194,14 @@ public class CollectionLogAutoSyncManager
 
 			log.debug("Computing collection log diff for {}", username);
 
-			Set<ObtainedCollectionItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
+			Map<Integer, CollectionLogItem> obtainedCollectionLogItems = collectionLogManager.getObtainedCollectionLogItems();
 
 			final Multiset<Integer> collectionLogItemIdCountMap = HashMultiset.create();
 
-			for (ObtainedCollectionItem item : obtainedCollectionLogItems)
+			for (CollectionLogItem item : obtainedCollectionLogItems.values())
 			{
 				final int itemId = item.getId();
-				final int itemCount = item.getCount();
+				final int itemCount = item.getQuantityObtained();
 
 				collectionLogItemIdCountMap.add(itemId, itemCount);
 			}
@@ -225,10 +222,11 @@ public class CollectionLogAutoSyncManager
 
 			// Add the log items found in the diff to the pending sync items set
 			obtainedCollectionLogItems
+				.values()
 				.stream()
 				// Name check isn't technically needed here, but it helps suppress warnings
 				.filter(item -> itemDiff.contains(item.getId()) && item.getName() != null)
-				.map(item -> new ObtainedCollectionItem(item.getId(), item.getName(), item.getCount()))
+				.map(item -> new CollectionLogItem(item.getId(), item.getName(), item.getQuantityObtained()))
 				.forEach(pendingSyncItems::add);
 		}
 		finally

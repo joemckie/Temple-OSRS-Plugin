@@ -107,13 +107,7 @@ public class CollectionLogManager
 	 * List of items found in the collection log, computed by reading the in-game enums/structs.
 	 */
 	@Getter
-	private static final Set<Integer> allCollectionLogItems = new HashSet<>();
-
-	/**
-	 * Unique list of all obtained collection log items
-	 */
-	@Getter
-	private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
+	private static final Map<Integer, CollectionLogItem> collectionLogItems = new HashMap<>();
 
 	/**
 	 * Maps in-game categories to the list of items they contain. Pulled from the in-game cache, where the key is the
@@ -168,7 +162,7 @@ public class CollectionLogManager
 
 			CollectionLogCacheData collectionLogCacheData = parseCacheForClog();
 
-			allCollectionLogItems.addAll(collectionLogCacheData.getItemIds());
+			collectionLogItems.putAll(collectionLogCacheData.getItemIds());
 			collectionLogCategoryMap.putAll(collectionLogCacheData.getCategories());
 			collectionLogCategoryStructIdMap.putAll(collectionLogCacheData.getCategoryStructIds());
 			collectionLogCategoryTabSlugs.putAll(collectionLogCacheData.getCategorySlugs());
@@ -193,8 +187,7 @@ public class CollectionLogManager
 
 		syncButtonManager.shutDown();
 
-		obtainedCollectionLogItems.clear();
-		allCollectionLogItems.clear();
+		collectionLogItems.clear();
 		collectionLogCategoryMap.clear();
 	}
 
@@ -274,7 +267,6 @@ public class CollectionLogManager
 							.getCollectionLog()
 							.getLastChanged();
 
-
 						// Skip sync if the player's collection log doesn't exist, or has already been saved and is up-to-date
 						if (
 							lastChanged == null ||
@@ -306,7 +298,7 @@ public class CollectionLogManager
 	{
 		if (preFired.getScriptId() == 4100)
 		{
-			if (allCollectionLogItems.isEmpty())
+			if (collectionLogItems.isEmpty())
 			{
 				return;
 			}
@@ -321,7 +313,7 @@ public class CollectionLogManager
 			int itemCount = (int) args[2];
 			String itemName = itemManager.getItemComposition(itemId).getName();
 
-			obtainedCollectionLogItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount));
+			collectionLogItems.put(itemId, new CollectionLogItem(itemId, itemName, itemCount, null));
 		}
 	}
 
@@ -359,10 +351,11 @@ public class CollectionLogManager
 
 	private void submitPlayerData()
 	{
-		String username = client.getLocalPlayer().getName();
+		final String username = client.getLocalPlayer().getName();
+		final Map<Integer, CollectionLogItem> obtainedCollectionLogItems = getObtainedCollectionLogItems();
 
 		// Do not send if slot data wasn't generated
-		if (obtainedCollectionLogItems.isEmpty())
+		if (getObtainedCollectionLogItems().isEmpty())
 		{
 			log.error("❌ No obtained items have been set for {}", username);
 
@@ -376,12 +369,13 @@ public class CollectionLogManager
 		PlayerProfile profileKey = new PlayerProfile(username, profileType);
 
 		// Only IDs and counts are useful in the request
-		Set<ObtainedCollectionItem> preparedItems = obtainedCollectionLogItems
+		Set<CollectionLogItem> preparedItems = obtainedCollectionLogItems
+			.values()
 			.stream()
-			.map(item -> new ObtainedCollectionItem(item.getId(), item.getCount()))
+			.map(item -> new CollectionLogItem(item.getId(), item.getQuantityObtained()))
 			.collect(Collectors.toSet());
 
-		int totalCollectionsAvailable = allCollectionLogItems.size();
+		int totalCollectionsAvailable = collectionLogItems.size();
 
 		PlayerData playerData = new PlayerData(totalCollectionsAvailable, preparedItems);
 
@@ -415,7 +409,7 @@ public class CollectionLogManager
 	 */
 	private CollectionLogCacheData parseCacheForClog()
 	{
-		Set<Integer> items = new HashSet<>();
+		Map<Integer, CollectionLogItem> items = new HashMap<>();
 		Map<Integer, CollectionLogCategory> categories = new LinkedHashMap<>();
 		Map<String, Integer> categoryStructIds = new HashMap<>();
 		Map<Integer, Set<String>> categorySlugs = new LinkedHashMap<>();
@@ -463,21 +457,19 @@ public class CollectionLogManager
 					)
 					.replaceAll("");
 
-				Set<Integer> itemSet = new LinkedHashSet<>();
+				Map<Integer, CollectionLogItem> itemMap = new LinkedHashMap<>();
 
 				for (int clogItemId : clogItems)
 				{
 					final int replacementId = replacements.getIntValue(clogItemId);
+					final int finalItemId = replacementId == -1 ? clogItemId : replacementId;
+					final String itemName = itemManager.getItemComposition(finalItemId).getName();
 
-					itemSet.add(
-						replacementId == -1
-							? clogItemId
-							: replacementId
-					);
+					itemMap.put(finalItemId, new CollectionLogItem(finalItemId, itemName, 0, null));
 				}
 
-				items.addAll(itemSet);
-				categories.put(subtabStructIndex, new CollectionLogCategory(title, itemSet));
+				items.putAll(itemMap);
+				categories.put(subtabStructIndex, new CollectionLogCategory(title, itemMap));
 				categoryStructIds.put(normalizedCategoryName, subtabStructIndex);
 				singleCategorySlugSet.add(normalizedCategoryName);
 			}
@@ -486,5 +478,20 @@ public class CollectionLogManager
 		}
 
 		return new CollectionLogCacheData(items, categories, categoryStructIds, categorySlugs);
+	}
+
+	public Map<Integer, CollectionLogItem> getObtainedCollectionLogItems()
+	{
+		final Map<Integer, CollectionLogItem> obtainedCollectionLogItems = new HashMap<>();
+
+		for (CollectionLogItem item : collectionLogItems.values())
+		{
+			if (item.isObtained())
+			{
+				obtainedCollectionLogItems.put(item.getId(), item);
+			}
+		}
+
+		return obtainedCollectionLogItems;
 	}
 }

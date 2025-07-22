@@ -6,7 +6,7 @@ import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
 import com.templeosrs.util.collections.chatcommands.ChatCommand;
 import com.templeosrs.util.collections.data.CollectionLogCategory;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import com.templeosrs.util.collections.data.PlayerInfoResponse;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
@@ -175,15 +175,18 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             }
 
             // Fetch the requested category
-            Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
+            Map<Integer, CollectionLogItem> items = CollectionDatabase.getItemsByCategory(
                     normalizedPlayerName,
-					new LinkedHashSet<>(category.getItems())
+					new LinkedHashMap<>(category.getItems())
             );
+
+			log.debug("items: {}", items);
 
             loadItemIcons(
 				items
+					.values()
 					.stream()
-					.map(ObtainedCollectionItem::getId)
+					.map(CollectionLogItem::getId)
 					.collect(Collectors.toList())
 			);
 
@@ -207,7 +210,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             } else {
                 int i = 0;
 
-                for (ObtainedCollectionItem item : items)
+                for (CollectionLogItem item : items.values())
                 {
                     Integer iconIndex = itemIconIndexes.get(item.getId());
 
@@ -217,7 +220,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
                     chatMessageBuilder
                             .append("x")
-                            .append(String.valueOf(item.getCount()));
+                            .append(String.valueOf(item.getQuantityObtained()));
 
                     if (i++ < items.size() - 1) {
                         chatMessageBuilder.append(", ");
@@ -286,7 +289,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
             StructComposition categoryStruct = client.getStructComposition(structId);
             String categoryTitle = categoryStruct.getStringValue(689);
-            Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(categoryStruct.getId()).getItems();
+            Map<Integer, CollectionLogItem> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(categoryStruct.getId()).getItems();
 
             return new CollectionLogCategory(categoryTitle, categoryItems);
         } catch (NullPointerException e) {

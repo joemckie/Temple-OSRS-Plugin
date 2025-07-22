@@ -3,7 +3,7 @@ package com.templeosrs.util.collections.playerlookup;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import com.templeosrs.util.collections.data.PlayerInfoResponse;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
@@ -12,19 +12,15 @@ import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import java.awt.GridBagLayout;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
-import javax.swing.BorderFactory;
-import javax.swing.BoxLayout;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
@@ -39,14 +35,13 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 	private final CollectionLogService collectionLogService;
 	private final CollectionParser collectionParser;
 	private final TempleOSRSPlugin templeOSRSPlugin;
+
+	@Getter
 	private final ItemManager itemManager;
-	private final ClientThread clientThread;
 
 	private CollectionLogPlayerLookupResultPanel resultsPanel;
 
-	private final JPanel mainPanel = new JPanel();
-
-	private Map<Integer, ObtainedCollectionItem> lookupResult;
+	private Map<Integer, CollectionLogItem> lookupResult;
 
 	@Inject
 	public CollectionLogPlayerLookupPanel(
@@ -56,8 +51,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		CollectionLogService collectionLogService,
 		CollectionParser collectionParser,
 		TempleOSRSPlugin templeOSRSPlugin,
-		ItemManager itemManager,
-		ClientThread clientThread
+		ItemManager itemManager
 	)
 	{
 		this.client = client;
@@ -67,17 +61,9 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		this.collectionParser = collectionParser;
 		this.templeOSRSPlugin = templeOSRSPlugin;
 		this.itemManager = itemManager;
-		this.clientThread = clientThread;
 
-		setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new GridBagLayout());
-
-		mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
-		mainPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		mainPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 0));
-
-		add(mainPanel);
 	}
 
 	public void lookup(@NonNull String username)
@@ -126,17 +112,17 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 				log.debug("✔️ Found cached data for '{}'", normalizedPlayerName);
 			}
 
-			final Set<Integer> allCollectionLogItems = CollectionLogManager.getAllCollectionLogItems();
+			final Map<Integer, CollectionLogItem> allCollectionLogItems = CollectionLogManager.getCollectionLogItems();
 
 			// Fetch the requested category
-			Set<ObtainedCollectionItem> results = CollectionDatabase.getItemsByCategory(
+			Map<Integer, CollectionLogItem> results = CollectionDatabase.getItemsByCategory(
 				normalizedPlayerName,
-				new LinkedHashSet<>(allCollectionLogItems)
+				new LinkedHashMap<>(allCollectionLogItems)
 			);
 
-			Map<Integer, ObtainedCollectionItem> obtainedCollectionItemMap = new HashMap<>();
+			Map<Integer, CollectionLogItem> obtainedCollectionItemMap = new HashMap<>();
 
-			for (ObtainedCollectionItem item : results)
+			for (CollectionLogItem item : results.values())
 			{
 				obtainedCollectionItemMap.put(item.getId(), item);
 			}
@@ -161,14 +147,18 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 
 	private void rebuildPanel()
 	{
-		SwingUtil.fastRemoveAll(mainPanel);
+		SwingUtil.fastRemoveAll(this);
 
-		resultsPanel = new CollectionLogPlayerLookupResultPanel(itemManager, clientThread, this.lookupResult);
+		resultsPanel = new CollectionLogPlayerLookupResultPanel(this.lookupResult);
 
-		mainPanel.add(resultsPanel);
+		resultsPanel
+			.getCollectionLogGridItems()
+			.forEach(gridItem -> gridItem.updateIcon(this));
 
-		mainPanel.revalidate();
-		mainPanel.repaint();
+		add(resultsPanel);
+
+		revalidate();
+		repaint();
 	}
 
 	private void refreshPanel()

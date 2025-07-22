@@ -3,14 +3,13 @@ package com.templeosrs.util.collections.autosync;
 import com.google.common.collect.HashMultiset;
 import com.google.common.collect.Multiset;
 import com.google.common.collect.Multisets;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.CollectionLogItem;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.events.ItemContainerChanged;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.game.ItemManager;
-import org.apache.commons.lang3.tuple.Pair;
 
 import javax.inject.Inject;
 import java.util.Arrays;
@@ -55,7 +54,7 @@ public class CollectionLogAutoSyncItemContainerChangedSubscriber
             int itemCount = item.getCount();
 
             if (collectionLogAutoSyncManager.obtainedItemNames.contains(itemName)) {
-                collectionLogAutoSyncManager.pendingSyncItems.add(new ObtainedCollectionItem(itemId, itemName, itemCount));
+                collectionLogAutoSyncManager.pendingSyncItems.add(new CollectionLogItem(itemId, itemName, itemCount));
                 collectionLogAutoSyncManager.obtainedItemNames.remove(itemName);
             }
         });

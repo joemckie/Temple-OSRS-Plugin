@@ -7,14 +7,16 @@ import lombok.Value;
 import java.util.Set;
 
 @Value
-public class CollectionLogResponse {
-    @Value
-    public static class Data {
-        String player;
-        @SerializedName("last_changed") String lastChanged;
-        Set<ObtainedCollectionItem> items;
-    }
+public class CollectionLogResponse
+{
+	@Value
+	public static class Data
+	{
+		String player;
+		@SerializedName("last_changed") String lastChanged;
+		Set<CollectionLogItem> items;
+	}
 
-    Data data;
-    APIError error;
+	Data data;
+	APIError error;
 }

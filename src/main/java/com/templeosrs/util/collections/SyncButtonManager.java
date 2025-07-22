@@ -143,9 +143,6 @@ public class SyncButtonManager {
 
         setFullSyncRequested(true);
 
-        // Clear the previously obtained item list to avoid duplicating items when counts change
-        collectionLogManager.getObtainedCollectionLogItems().clear();
-
         client.menuAction(-1, 40697932, MenuAction.CC_OP, 1, -1, "Search", null);
         client.runScript(2240);
         client.addChatMessage(ChatMessageType.CONSOLE, "TempleOSRS", "Your collection log data is being sent to TempleOSRS...", "TempleOSRS");

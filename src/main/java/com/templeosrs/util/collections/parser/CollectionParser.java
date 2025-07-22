@@ -1,7 +1,7 @@
 package com.templeosrs.util.collections.parser;
 
 import com.google.gson.*;
-import java.sql.Connection;
+import com.templeosrs.util.collections.data.CollectionLogItem;import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
@@ -9,7 +9,6 @@ import java.util.*;
 
 import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.collections.data.CollectionLogResponse;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,10 +68,10 @@ public class CollectionParser {
 
         // Handle success response
         if (data != null) {
-            Set<ObtainedCollectionItem> itemList = new HashSet<>();
+            Set<CollectionLogItem> itemList = new HashSet<>();
 
-            for (ObtainedCollectionItem item : data.getItems()) {
-                log.debug("➡️ Queuing: {} x{} @ {}", item.getName(), item.getCount(), item.getDate());
+            for (CollectionLogItem item : data.getItems()) {
+                log.debug("➡️ Queuing: {} x{} @ {}", item.getName(), item.getQuantityObtained(), item.getDateObtained());
                 itemList.add(item);
             }
 

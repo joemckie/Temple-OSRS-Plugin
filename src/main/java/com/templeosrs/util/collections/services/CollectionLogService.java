@@ -1,7 +1,6 @@
 package com.templeosrs.util.collections.services;
 
 import com.templeosrs.util.collections.CollectionLogRequestManager;
-import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
@@ -12,7 +11,6 @@ import org.jetbrains.annotations.NotNull;
 import javax.inject.Inject;
 import java.sql.Timestamp;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
 @Slf4j

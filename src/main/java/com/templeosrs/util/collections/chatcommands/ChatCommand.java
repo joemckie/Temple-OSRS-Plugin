@@ -2,7 +2,7 @@ package com.templeosrs.util.collections.chatcommands;
 
 import com.templeosrs.util.collections.CollectionLogCategoryGroup;
 import com.templeosrs.util.collections.CollectionLogManager;
-import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
+import com.templeosrs.util.collections.data.CollectionLogItem;import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -124,18 +124,25 @@ public abstract class ChatCommand {
                     .getCollectionLogCategoryTabSlugs()
                     .get(categoryGroup.getStructId());
 
-			List<Integer> iconItemIds = categorySlugs.stream().map(slug -> {
-				int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(slug);
-				Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(structId).getItems();
+			List<Integer> iconItemIds = categorySlugs
+				.stream()
+				.map(slug ->
+					{
+						int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(slug);
+						Map<Integer, CollectionLogItem> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(structId).getItems();
 
-				return new ArrayList<>(categoryItems).get(0);
-			}).collect(Collectors.toList());
+						return new ArrayList<>(categoryItems.values()).get(0);
+					}
+				)
+				.map(CollectionLogItem::getId)
+				.collect(Collectors.toList());
 
 			loadItemIcons(iconItemIds);
 
 			int i = 0;
 
-            for (String categorySlug : categorySlugs) {
+            for (String categorySlug : categorySlugs)
+			{
                 int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categorySlug);
                 String categoryTitle = client.getStructComposition(structId).getStringValue(689);
 				int iconIndex = itemIconIndexes.get(iconItemIds.get(i++));
@@ -220,23 +227,27 @@ public abstract class ChatCommand {
 		}
 	}
 
-    /**
-     * Executes the chat command handler.
-     * If it has been configured to only show for the current player, it will not be triggered for anyone else.
-     * @param event The chat message event
-     */
-    public void execute(ChatMessage event)
-    {
-        if (onlyShowForLocalPlayer && isOtherPlayer(event)) {
-            return;
-        }
+	/**
+	* Executes the chat command handler.
+	* If it has been configured to only show for the current player, it will not be triggered for anyone else.
+	* @param event The chat message event
+	*/
+	public void execute(ChatMessage event)
+	{
+		if (onlyShowForLocalPlayer && isOtherPlayer(event))
+		{
+			return;
+		}
 
-        command(event);
-    }
+		command(event);
+	}
 
-    public void command(ChatMessage event) {}
+	public void command(ChatMessage event)
+	{
+	}
 
-    public void shutDown() {
+	public void shutDown()
+	{
 		itemIconIndexes.clear();
 		loadedItemIds.clear();
 	}
