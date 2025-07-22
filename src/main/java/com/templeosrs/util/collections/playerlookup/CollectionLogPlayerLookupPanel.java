@@ -55,6 +55,8 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		final ItemManager itemManager
 	)
 	{
+		super(false);
+
 		this.client = client;
 		this.collectionLogRequestManager = collectionLogRequestManager;
 		this.scheduledExecutorService = scheduledExecutorService;

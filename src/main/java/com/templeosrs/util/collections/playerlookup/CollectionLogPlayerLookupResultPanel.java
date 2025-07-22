@@ -3,14 +3,16 @@ package com.templeosrs.util.collections.playerlookup;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.data.CollectionLogCategory;
 import com.templeosrs.util.collections.data.CollectionLogItem;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
+import java.awt.BorderLayout;
+import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import javax.swing.BoxLayout;import javax.swing.JPanel;
-import lombok.Getter;
+import javax.swing.Box;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.border.EmptyBorder;import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -21,7 +23,7 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 
 	private final List<CollectionLogCategoryItemsPanel> collectionLogCategoryItemsPanels = new ArrayList<>();
 
-	private final GridBagConstraints c = new GridBagConstraints();
+	private final JPanel panel = new JPanel();
 
 	@Getter
 	private final Map<Integer, CollectionLogItem> obtainedCollectionLogItems;
@@ -33,7 +35,13 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 	{
 		this.obtainedCollectionLogItems = obtainedCollectionLogItems;
 
-		setLayout(new GridBagLayout());
+		setLayout(new BorderLayout());
+
+		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+
+		JScrollPane scrollPane = new JScrollPane(panel);
+		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+		scrollPane.setBorder(new EmptyBorder(10, 0, 0, 0));
 
 		Map<Integer, CollectionLogCategory> collectionLogCategoryItemMap = CollectionLogManager.getCollectionLogCategoryMap();
 
@@ -41,22 +49,16 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 			username
 		);
 
-		c.insets = new Insets(4, 2, 4, 2);
-		c.gridx = 0;
-		c.gridy = 0;
-		c.anchor = GridBagConstraints.WEST;
-		c.fill = GridBagConstraints.BOTH;
-
-		add(collectionLogPlayerMetadataPanel, c);
+		add(collectionLogPlayerMetadataPanel, BorderLayout.NORTH);
 
 		for (CollectionLogCategory category : collectionLogCategoryItemMap.values())
 		{
-			c.gridy++;
-
 			addCollectionLogCategory(category);
 		}
 
 		collectionLogCategoryItemsPanels.get(0).setVisible(true);
+
+		add(scrollPane, BorderLayout.CENTER);
 	}
 
 	private void addCollectionLogCategory(final CollectionLogCategory category)
@@ -83,6 +85,6 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 		categoryContainer.add(collectionLogCategoryHeader);
 		categoryContainer.add(collectionLogCategoryItemsPanel);
 
-		add(categoryContainer, c);
+		panel.add(categoryContainer);
 	}
 }
