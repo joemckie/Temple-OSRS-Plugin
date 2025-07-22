@@ -16,8 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
-import javax.swing.BoxLayout;
-import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import lombok.Getter;
@@ -42,11 +40,9 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 	@Getter
 	private final ItemManager itemManager;
 
-	private final JPanel layoutPanel = new JPanel();
-
-	private CollectionLogPlayerLookupResultPanel resultsPanel;
-
 	private Map<Integer, CollectionLogItem> lookupResult;
+
+	private String lookupUsername;
 
 	@Inject
 	public CollectionLogPlayerLookupPanel(
@@ -70,9 +66,6 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		setBorder(new EmptyBorder(6, 6, 6, 6));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new BorderLayout());
-
-		layoutPanel.setLayout(new BoxLayout(layoutPanel, BoxLayout.Y_AXIS));
-		add(layoutPanel, BorderLayout.NORTH);
 	}
 
 	public void lookup(@NonNull String username)
@@ -136,6 +129,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 				obtainedCollectionItemMap.put(item.getId(), item);
 			}
 
+			lookupUsername = username;
 			lookupResult = obtainedCollectionItemMap;
 
 			refreshPanel();
@@ -156,15 +150,18 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 
 	private void rebuildPanel()
 	{
-		SwingUtil.fastRemoveAll(layoutPanel);
+		SwingUtil.fastRemoveAll(this);
 
-		resultsPanel = new CollectionLogPlayerLookupResultPanel(this.lookupResult);
+		final CollectionLogPlayerLookupResultPanel resultsPanel = new CollectionLogPlayerLookupResultPanel(
+			lookupUsername,
+			lookupResult
+		);
 
 		resultsPanel
 			.getCollectionLogGridItems()
 			.forEach(gridItem -> gridItem.updateIcon(this));
 
-		layoutPanel.add(resultsPanel);
+		add(resultsPanel);
 
 		revalidate();
 		repaint();
