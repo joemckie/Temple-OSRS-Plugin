@@ -2,7 +2,8 @@ package com.templeosrs.util.collections.playerlookup;
 
 import com.templeosrs.util.collections.data.CollectionLogItem;
 import java.awt.Color;
-import java.text.SimpleDateFormat;import javax.swing.BorderFactory;
+import java.text.SimpleDateFormat;
+import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +23,7 @@ public class CollectionLogGridItemLabel extends JLabel
 
 		this.item = item;
 
-		this.setBorder(BorderFactory.createEmptyBorder(5, 0, 2, 0));
+		this.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
 
 		setOpaque(true);
 

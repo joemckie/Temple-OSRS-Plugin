@@ -81,7 +81,7 @@ public class CollectionLogPlayerLookupManager
 		SwingUtilities.invokeLater(
 			() -> {
 				clientToolbar.openPanel(navigationButton);
-				collectionLogPlayerLookupPanel.lookup("cousinofkos");
+				collectionLogPlayerLookupPanel.lookup(username);
 			}
 		);
 	}

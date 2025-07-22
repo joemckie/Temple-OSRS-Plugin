@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.swing.JPanel;
+import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,6 +22,7 @@ public class CollectionLogCategoryItemsPanel extends JPanel
 	)
 	{
 		setLayout(new GridLayout(0, 4, 1, 1));
+		setBorder(new EmptyBorder(10, 0, 0, 0));
 
 		categoryCollectionLogGridItems.clear();
 
