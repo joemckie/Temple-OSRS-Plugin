@@ -2,7 +2,8 @@ package com.templeosrs.util.collections.playerlookup;
 
 import com.templeosrs.util.collections.data.CollectionLogItem;
 import java.awt.Color;
-import java.text.SimpleDateFormat;
+import java.text.DateFormat;
+import java.util.Locale;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
@@ -56,21 +57,27 @@ public class CollectionLogGridItemLabel extends JLabel
 
 	private String buildTooltipText()
 	{
-		String tooltip = "<html>";
+		final StringBuilder sb = new StringBuilder("<html>");
 
-		tooltip += item.getName();
+		final String itemInfo = String.format("%s", item.getName());
+
+		sb.append(itemInfo);
 
 		if (item.isObtained())
 		{
-			final String formattedObtainedDate = new SimpleDateFormat("MM/dd/yyyy").format(item.getDateObtained());
+			final String obtainedInfo = String.format(
+				"<br />---" +
+				"<br />Quantity: %s" +
+				"<br />Obtained on %s",
+				item.getQuantityObtained(),
+				DateFormat.getDateInstance(DateFormat.LONG, Locale.getDefault()).format(item.getDateObtained())
+			);
 
-			tooltip += "<br />---";
-			tooltip += "<br />Quantity: " + item.getQuantityObtained();
-			tooltip += "<br />Obtained at: " + formattedObtainedDate;
+			sb.append(obtainedInfo);
 		}
 
-		tooltip += "</html>";
+		sb.append("</html>");
 
-		return tooltip;
+		return sb.toString();
 	}
 }
