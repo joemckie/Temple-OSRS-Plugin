@@ -2,6 +2,8 @@ package com.templeosrs.util.collections.playerlookup;
 
 import com.templeosrs.util.collections.data.CollectionLogItem;
 import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.text.DateFormat;
 import java.util.Locale;
 import javax.swing.BorderFactory;
@@ -32,6 +34,25 @@ public class CollectionLogGridItemLabel extends JLabel
 		setHorizontalAlignment(SwingConstants.CENTER);
 
 		setToolTipText(buildTooltipText());
+
+		this.addMouseListener(
+			new MouseAdapter()
+			{
+				@Override
+				public void mouseEntered(MouseEvent e)
+				{
+					final CollectionLogGridItemLabel item = (CollectionLogGridItemLabel) e.getSource();
+					item.setBackground(getBackgroundColor().brighter());
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e)
+				{
+					final CollectionLogGridItemLabel item = (CollectionLogGridItemLabel) e.getSource();
+					item.setBackground(getBackgroundColor());
+				}
+			}
+		);
 	}
 
 	public void updateIcon(CollectionLogPlayerLookupPanel playerLookupPanel)
@@ -40,12 +61,12 @@ public class CollectionLogGridItemLabel extends JLabel
 			.getItemManager()
 			.getImage(item.getId(), item.getQuantityObtained(), item.getQuantityObtained() > 1);
 
-		setBackground(buildBackground());
+		setBackground(getBackgroundColor());
 
 		img.addTo(this);
 	}
 
-	private Color buildBackground()
+	private Color getBackgroundColor()
 	{
 		if (item.isObtained())
 		{

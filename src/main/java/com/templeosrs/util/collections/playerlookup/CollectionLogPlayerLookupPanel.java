@@ -9,14 +9,17 @@ import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
-import java.awt.GridBagLayout;
+import java.awt.BorderLayout;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -39,19 +42,21 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 	@Getter
 	private final ItemManager itemManager;
 
+	private final JPanel layoutPanel = new JPanel();
+
 	private CollectionLogPlayerLookupResultPanel resultsPanel;
 
 	private Map<Integer, CollectionLogItem> lookupResult;
 
 	@Inject
 	public CollectionLogPlayerLookupPanel(
-		Client client,
-		CollectionLogRequestManager collectionLogRequestManager,
-		ScheduledExecutorService scheduledExecutorService,
-		CollectionLogService collectionLogService,
-		CollectionParser collectionParser,
-		TempleOSRSPlugin templeOSRSPlugin,
-		ItemManager itemManager
+		final Client client,
+		final CollectionLogRequestManager collectionLogRequestManager,
+		final ScheduledExecutorService scheduledExecutorService,
+		final CollectionLogService collectionLogService,
+		final CollectionParser collectionParser,
+		final TempleOSRSPlugin templeOSRSPlugin,
+		final ItemManager itemManager
 	)
 	{
 		this.client = client;
@@ -62,8 +67,12 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		this.templeOSRSPlugin = templeOSRSPlugin;
 		this.itemManager = itemManager;
 
+		setBorder(new EmptyBorder(6, 6, 6, 6));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
-		setLayout(new GridBagLayout());
+		setLayout(new BorderLayout());
+
+		layoutPanel.setLayout(new BoxLayout(layoutPanel, BoxLayout.Y_AXIS));
+		add(layoutPanel, BorderLayout.NORTH);
 	}
 
 	public void lookup(@NonNull String username)
@@ -147,7 +156,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 
 	private void rebuildPanel()
 	{
-		SwingUtil.fastRemoveAll(this);
+		SwingUtil.fastRemoveAll(layoutPanel);
 
 		resultsPanel = new CollectionLogPlayerLookupResultPanel(this.lookupResult);
 
@@ -155,7 +164,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 			.getCollectionLogGridItems()
 			.forEach(gridItem -> gridItem.updateIcon(this));
 
-		add(resultsPanel);
+		layoutPanel.add(resultsPanel);
 
 		revalidate();
 		repaint();

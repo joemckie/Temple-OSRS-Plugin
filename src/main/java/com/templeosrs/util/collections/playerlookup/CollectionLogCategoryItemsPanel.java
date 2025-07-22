@@ -21,6 +21,7 @@ public class CollectionLogCategoryItemsPanel extends JPanel
 		final Map<Integer, CollectionLogItem> obtainedCollectionLogItems
 	)
 	{
+		setVisible(false);
 		setLayout(new GridLayout(0, 4, 1, 1));
 		setBorder(new EmptyBorder(10, 0, 0, 0));
 
@@ -39,5 +40,10 @@ public class CollectionLogCategoryItemsPanel extends JPanel
 	{
 		removeAll();
 		categoryCollectionLogGridItems.forEach(this::add);
+	}
+
+	public void toggleVisibility()
+	{
+		setVisible(!isVisible());
 	}
 }

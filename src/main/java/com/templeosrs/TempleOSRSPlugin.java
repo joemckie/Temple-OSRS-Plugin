@@ -33,6 +33,8 @@ import com.templeosrs.ui.ranks.TempleRanks;
 import com.templeosrs.util.TempleService;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.SyncButtonManager;
+import com.templeosrs.util.collections.playerlookup.CollectionLogPlayerLookupPanel;
+import java.util.Objects;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -42,8 +44,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.widgets.ComponentID;
-import net.runelite.api.widgets.InterfaceID;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -66,188 +67,304 @@ import javax.swing.*;
 
 @PluginDependency(XpUpdaterPlugin.class)
 @PluginDescriptor(name = "TempleOSRS", description = "A RuneLite plugin utilizing the TempleOSRS API.", tags = {"Temple", "ehp", "ehb"})
-public class TempleOSRSPlugin extends Plugin {
-    private static final String TEMPLE = "Temple";
+public class TempleOSRSPlugin extends Plugin
+{
+	private static final String TEMPLE = "Temple";
 
-    private static final int XP_THRESHOLD = 10000;
+	private static final String COLLECTION_LOG_MENU_ITEM = "Collection log";
 
-    private static NavigationButton navButton;
+	private static final int XP_THRESHOLD = 10000;
 
-    public TempleRanks ranks;
+	private static NavigationButton navButton;
 
-    public TempleClans clans;
+	private NavigationButton collectionLogPlayerLookupNavigationButton;
 
-    public TempleCompetitions competitions;
+	public TempleRanks ranks;
 
-    public TempleOSRSPanel panel;
+	public TempleClans clans;
 
-    private long lastAccount;
+	public TempleCompetitions competitions;
 
-    private boolean fetchXp;
+	public TempleOSRSPanel panel;
 
-    private long lastXp;
+	private CollectionLogPlayerLookupPanel collectionLogPlayerLookupPanel;
 
-    @Inject
-    private Client client;
+	private long lastAccount;
 
-    @Inject
-    private Provider<MenuManager> menuManager;
+	private boolean fetchXp;
 
-    @Inject
-    private PluginManager pluginManager;
+	private long lastXp;
 
-    @Inject
-    private ClientToolbar clientToolbar;
+	@Inject
+	private Client client;
 
-    @Getter
-    @Inject
-    private TempleOSRSConfig config;
+	@Inject
+	private Provider<MenuManager> menuManager;
 
-    @Inject
-    private XpUpdaterConfig xpUpdaterConfig;
+	@Inject
+	private PluginManager pluginManager;
 
-    @Inject
-    private XpUpdaterPlugin xpUpdaterPlugin;
+	@Inject
+	private ClientToolbar clientToolbar;
 
-    @Inject
-    private TempleService service;
+	@Getter
+	@Inject
+	private TempleOSRSConfig config;
 
-    @Inject
-    private SyncButtonManager syncButtonManager;
+	@Inject
+	private XpUpdaterConfig xpUpdaterConfig;
 
-    @Inject
-    private CollectionLogManager clogManager;
+	@Inject
+	private XpUpdaterPlugin xpUpdaterPlugin;
 
-    @Override
-    protected void startUp() {
-        fetchXp = true;
+	@Inject
+	private TempleService service;
 
-        lastAccount = -1L;
+	@Inject
+	private SyncButtonManager syncButtonManager;
 
-        ranks = injector.getInstance(TempleRanks.class);
+	@Inject
+	private CollectionLogManager clogManager;
 
-        clans = injector.getInstance(TempleClans.class);
+	@Override
+	protected void startUp()
+	{
+		fetchXp = true;
 
-        competitions = injector.getInstance(TempleCompetitions.class);
+		lastAccount = -1L;
 
-        panel = new TempleOSRSPanel(ranks, clans, competitions);
-        navButton = NavigationButton.builder().tooltip("TempleOSRS").icon(ImageUtil.loadImageResource(TempleOSRSPlugin.class, "skills/skill_icon_ehp.png")).priority(5).panel(panel).build();
+		ranks = injector.getInstance(TempleRanks.class);
 
-        if (config.showSidebar()) {
-            clientToolbar.addNavigation(navButton);
-        }
+		clans = injector.getInstance(TempleClans.class);
 
-        if (config.playerLookup() && client != null) {
-            menuManager.get().addPlayerMenuItem(TEMPLE);
-        }
+		competitions = injector.getInstance(TempleCompetitions.class);
 
-        // Only display clog update button if enabled
-        if (config.clogSyncButton()) {
-            syncButtonManager.startUp();
-        }
+		panel = new TempleOSRSPanel(ranks, clans, competitions);
 
-        clogManager.startUp();
-    }
+		collectionLogPlayerLookupPanel = injector.getInstance(CollectionLogPlayerLookupPanel.class);
 
-    @Override
-    protected void shutDown() {
-        clientToolbar.removeNavigation(navButton);
+		collectionLogPlayerLookupNavigationButton = NavigationButton.builder()
+			.tooltip("TempleOSRS Collection Log")
+			.icon(ImageUtil.loadImageResource(TempleOSRSPlugin.class, "skills/skill_icon_ehp.png"))
+			.priority(5)
+			.panel(collectionLogPlayerLookupPanel)
+			.build();
 
-        if (client != null) {
-            menuManager.get().removePlayerMenuItem(TEMPLE);
-        }
-        ranks.shutdown();
-        clogManager.shutDown();
-    }
+		clientToolbar.addNavigation(collectionLogPlayerLookupNavigationButton);
 
-    @Subscribe
-    public void onConfigChanged(ConfigChanged event) {
-        if (event.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP)) {
-            if (client != null) {
-                menuManager.get().removePlayerMenuItem(TEMPLE);
-                if (config.playerLookup()) {
-                    menuManager.get().addPlayerMenuItem(TEMPLE);
-                }
+		navButton = NavigationButton.builder()
+			.tooltip("TempleOSRS")
+			.icon(ImageUtil.loadImageResource(TempleOSRSPlugin.class, "skills/skill_icon_ehp.png"))
+			.priority(5)
+			.panel(panel)
+			.build();
 
-                // Show/Hide plugin icon in sidebar
-                if (config.showSidebar()) {
-                    clientToolbar.addNavigation(navButton);
-                } else {
-                    clientToolbar.removeNavigation(navButton);
-                }
+		if (config.showSidebar()) {
+			clientToolbar.addNavigation(navButton);
+		}
 
-                if (clans.clanAchievements != null) {
-                    clans.remove(clans.clanAchievements);
-                    if (config.displayClanAchievements()) {
-                        clans.add(clans.clanAchievements);
-                    }
-                }
+		if (client != null)
+		{
+			if (config.playerLookup())
+			{
+				menuManager.get().addPlayerMenuItem(TEMPLE);
+			}
 
-                if (clans.clanCurrentTop != null) {
-                    clans.remove(clans.clanCurrentTop);
-                    if (config.displayClanCurrentTop()) {
-                        clans.add(clans.clanCurrentTop);
-                    }
-                }
+			menuManager.get().addPlayerMenuItem(COLLECTION_LOG_MENU_ITEM);
+		}
 
-                if (clans.clanMembers != null) {
-                    clans.remove(clans.clanMembers);
-                    if (config.displayClanMembers()) {
-                        clans.add(clans.clanMembers);
-                    }
-                }
+		// Only display clog update button if enabled
+		if (config.clogSyncButton())
+		{
+			syncButtonManager.startUp();
+		}
 
-                // Collection Log Related
-                if (config.clogSyncButton()) {
-                    syncButtonManager.startUp();
-                } else {
-                    syncButtonManager.shutDown();
-                }
+		clogManager.startUp();
+	}
 
-                clans.repaint();
-                clans.revalidate();
-            }
+	@Override
+	protected void shutDown()
+	{
+		clientToolbar.removeNavigation(navButton);
+		clientToolbar.removeNavigation(collectionLogPlayerLookupNavigationButton);
 
-            competitions.rebuildWatchlist();
-        }
-    }
+		if (client != null)
+		{
+			menuManager.get().removePlayerMenuItem(TEMPLE);
+			menuManager.get().removePlayerMenuItem(COLLECTION_LOG_MENU_ITEM);
+		}
 
-    @Subscribe
-    public void onMenuEntryAdded(MenuEntryAdded event) {
-        if ((event.getType() != MenuAction.CC_OP.getId() && event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId()) || !config.playerLookup()) {
-            return;
-        }
+		ranks.shutdown();
+		clogManager.shutDown();
+	}
 
-        String username = Text.toJagexName(Text.removeTags(event.getTarget()).toLowerCase().trim());
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (event.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP))
+		{
+			if (client != null)
+			{
+				menuManager.get().removePlayerMenuItem(TEMPLE);
 
-        final String option = event.getOption();
-        final int componentId = event.getActionParam1();
-        final int groupId = WidgetUtil.componentToInterface(componentId);
+				if (config.playerLookup())
+				{
+					menuManager.get().addPlayerMenuItem(TEMPLE);
+				}
 
-        if (groupId == InterfaceID.FRIEND_LIST && option.equals("Delete")
-                || groupId == InterfaceID.FRIENDS_CHAT && (option.equals("Add ignore") || option.equals("Remove friend"))
-                || groupId == InterfaceID.CHATBOX && (option.equals("Add ignore") || option.equals("Message"))
-                || groupId == InterfaceID.IGNORE_LIST && option.equals("Delete")
-                || (componentId == ComponentID.CLAN_MEMBERS || componentId == ComponentID.CLAN_GUEST_MEMBERS) && (option.equals("Add ignore") || option.equals("Remove friend"))
-                || groupId == InterfaceID.PRIVATE_CHAT && (option.equals("Add ignore") || option.equals("Message"))
-                || groupId == InterfaceID.GROUP_IRON && (option.equals("Add friend") || option.equals("Remove friend") || option.equals("Remove ignore"))
-        ) {
-            client.createMenuEntry(-2).setOption(TEMPLE).setTarget(event.getTarget()).setType(MenuAction.RUNELITE).setIdentifier(event.getIdentifier()).onClick(e -> fetchUser(username));
-        }
-    }
+				// Show/Hide plugin icon in sidebar
+				if (config.showSidebar())
+				{
+					clientToolbar.addNavigation(navButton);
+				}
+				else
+				{
+					clientToolbar.removeNavigation(navButton);
+				}
 
-    @Subscribe
-    public void onMenuOptionClicked(MenuOptionClicked event) {
-        if (event.getMenuAction() == MenuAction.RUNELITE_PLAYER && event.getMenuOption().equals(TEMPLE)) {
-            Player player = event.getMenuEntry().getPlayer();
-            if (player == null) {
-                return;
-            }
+				if (clans.clanAchievements != null)
+				{
+					clans.remove(clans.clanAchievements);
 
-            String username = player.getName();
-            fetchUser(username);
-        }
-    }
+					if (config.displayClanAchievements())
+					{
+						clans.add(clans.clanAchievements);
+					}
+				}
+
+				if (clans.clanCurrentTop != null)
+				{
+					clans.remove(clans.clanCurrentTop);
+
+					if (config.displayClanCurrentTop())
+					{
+						clans.add(clans.clanCurrentTop);
+					}
+				}
+
+				if (clans.clanMembers != null)
+				{
+					clans.remove(clans.clanMembers);
+					if (config.displayClanMembers())
+					{
+						clans.add(clans.clanMembers);
+					}
+				}
+
+				// Collection Log Related
+				if (config.clogSyncButton())
+				{
+					syncButtonManager.startUp();
+				}
+				else
+				{
+					syncButtonManager.shutDown();
+				}
+
+				if (config.enablePlayerMenuLookup())
+				{
+					clientToolbar.addNavigation(collectionLogPlayerLookupNavigationButton);
+				}
+				else
+				{
+					clientToolbar.removeNavigation(collectionLogPlayerLookupNavigationButton);
+				}
+
+				clans.repaint();
+				clans.revalidate();
+			}
+
+			competitions.rebuildWatchlist();
+		}
+	}
+
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (
+			(
+				event.getType() != MenuAction.CC_OP.getId() &&
+				event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId()
+			) ||
+			(!config.playerLookup() && !config.enablePlayerMenuLookup())
+		)
+		{
+			return;
+		}
+
+		String username = Text.toJagexName(Text.removeTags(event.getTarget()).toLowerCase().trim());
+
+		final String option = event.getOption();
+		final int componentId = event.getActionParam1();
+		final int groupId = WidgetUtil.componentToInterface(componentId);
+
+		if (groupId == InterfaceID.FRIENDS && option.equals("Delete")
+			|| groupId == InterfaceID.CHATCHANNEL_CURRENT && (option.equals("Add ignore") || option.equals("Remove friend"))
+			|| groupId == InterfaceID.CHATBOX && (option.equals("Add ignore") || option.equals("Message"))
+			|| groupId == InterfaceID.IGNORE && option.equals("Delete")
+			|| (componentId == InterfaceID.ClansSidepanel.PLAYERLIST || componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST) && (option.equals("Add ignore") || option.equals("Remove friend"))
+			|| groupId == InterfaceID.PM_CHAT && (option.equals("Add ignore") || option.equals("Message"))
+			|| groupId == InterfaceID.GIM_SIDEPANEL && (option.equals("Add friend") || option.equals("Remove friend") || option.equals("Remove ignore"))
+		)
+		{
+			if (config.playerLookup())
+			{
+				client.getMenu()
+					.createMenuEntry(-2)
+					.setOption(TEMPLE)
+					.setTarget(event.getTarget())
+					.setType(MenuAction.RUNELITE)
+					.setIdentifier(event.getIdentifier())
+					.onClick(e -> fetchUser(username));
+			}
+
+			if (config.enablePlayerMenuLookup())
+			{
+				client.getMenu().createMenuEntry(-2)
+					.setOption(COLLECTION_LOG_MENU_ITEM)
+					.setTarget(event.getTarget())
+					.setType(MenuAction.RUNELITE)
+					.setIdentifier(event.getIdentifier())
+					.onClick(e ->	lookupPlayerCollectionLog(username));
+			}
+		}
+	}
+
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		if (
+			event.getMenuAction() != MenuAction.RUNELITE_PLAYER ||
+			(!Objects.equals(event.getMenuOption(), TEMPLE) && !Objects.equals(event.getMenuOption(), COLLECTION_LOG_MENU_ITEM))
+		)
+		{
+			return;
+		}
+
+		Player player = event.getMenuEntry().getPlayer();
+
+		if (player == null)
+		{
+			return;
+		}
+
+		String username = player.getName();
+
+		if (event.getMenuOption().equals(TEMPLE))
+		{
+			fetchUser(username);
+		}
+
+		if (event.getMenuOption().equals(COLLECTION_LOG_MENU_ITEM))
+		{
+			if (username == null)
+			{
+				return;
+			}
+
+			lookupPlayerCollectionLog(username);
+		}
+	}
 
     @Subscribe
     public void onGameTick(GameTick gameTick) {
@@ -310,4 +427,14 @@ public class TempleOSRSPlugin extends Plugin {
             }).start();
         }
     }
+
+	private void lookupPlayerCollectionLog(final String username)
+	{
+		SwingUtilities.invokeLater(() ->
+			{
+				clientToolbar.openPanel(collectionLogPlayerLookupNavigationButton);
+				collectionLogPlayerLookupPanel.lookup(username);
+			}
+		);
+	}
 }
