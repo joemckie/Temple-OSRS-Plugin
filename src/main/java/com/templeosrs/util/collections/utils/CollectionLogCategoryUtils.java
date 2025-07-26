@@ -66,6 +66,7 @@ public class CollectionLogCategoryUtils {
             Map.entry("phosani", CollectionLogCategorySlug.the_nightmare),
             Map.entry("phn", CollectionLogCategorySlug.the_nightmare),
             Map.entry("sire", CollectionLogCategorySlug.abyssal_sire),
+            Map.entry("spider", CollectionLogCategorySlug.venenatis_and_spindel),
             Map.entry("spindel", CollectionLogCategorySlug.venenatis_and_spindel),
             Map.entry("venenatis", CollectionLogCategorySlug.venenatis_and_spindel),
             Map.entry("thermonuclear", CollectionLogCategorySlug.thermonuclear_smoke_devil),
