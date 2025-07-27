@@ -156,6 +156,7 @@ public class CollectionLogCategoryUtils {
             Map.entry("mh", CollectionLogCategorySlug.mahogany_homes),
             Map.entry("homes", CollectionLogCategorySlug.mahogany_homes),
             Map.entry("mahogany", CollectionLogCategorySlug.mahogany_homes),
+			Map.entry("temp", CollectionLogCategorySlug.tempoross),
 
             // === Miscellaneous ===
             Map.entry("misc", CollectionLogCategorySlug.miscellaneous),
