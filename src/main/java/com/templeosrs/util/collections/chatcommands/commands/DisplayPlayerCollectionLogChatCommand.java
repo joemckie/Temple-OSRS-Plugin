@@ -193,17 +193,24 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
             String categoryName = category.getTitle();
 
-            // If sender's name is same as the player being queried, omit the player's name
-            if (!event.getName().equalsIgnoreCase(playerName)) {
-                chatMessageBuilder
-                        .append(ChatColorType.HIGHLIGHT)
-                        .append(prettyPlayerName + "'s ")
-                        .append(categoryName)
-                        .append(ChatColorType.NORMAL)
-                        .append(": ");
-            } else {
-                chatMessageBuilder.append(categoryName).append(": ");
-            }
+
+			// If sender's name is same as the player being queried, omit the player's name
+			if (!event.getName().equalsIgnoreCase(playerName))
+			{
+				chatMessageBuilder
+					.append(ChatColorType.HIGHLIGHT)
+					.append(prettyPlayerName + "'s ")
+					.append(categoryName)
+					.append(ChatColorType.NORMAL);
+			}
+			else
+			{
+				chatMessageBuilder.append(categoryName);
+			}
+
+			chatMessageBuilder
+				.append(getLogProgress(items.size(), category.getItems().size()))
+				.append(": ");
 
             if (items.isEmpty()) {
                 chatMessageBuilder.append("No obtained collection log items.");
@@ -291,9 +298,21 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
             String categoryTitle = categoryStruct.getStringValue(689);
             Map<Integer, CollectionLogItem> categoryItems = CollectionLogManager.getCollectionLogCategoryMap().get(categoryStruct.getId()).getItems();
 
-            return new CollectionLogCategory(categoryTitle, categoryItems);
-        } catch (NullPointerException e) {
-            return null;
-        }
-    }
+			return new CollectionLogCategory(categoryTitle, categoryItems);
+		}
+		catch (NullPointerException e)
+		{
+			return null;
+		}
+	}
+
+	private String getLogProgress(int acquiredItemsCount, int totalItemsCount)
+	{
+		if (acquiredItemsCount == 0)
+		{
+			return "";
+		}
+
+		return " (" + acquiredItemsCount + "/" + totalItemsCount + ")";
+	}
 }

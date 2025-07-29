@@ -25,6 +25,8 @@ public enum CollectionLogCategorySlug {
     corporeal_beast,
     crazy_archaeologist,
     dagannoth_kings,
+    deranged_archaeologist,
+    doom_of_mokhaiotl,
     duke_sucellus,
     the_fight_caves,
     fortis_colosseum,
@@ -33,7 +35,7 @@ public enum CollectionLogCategorySlug {
     giant_mole,
     grotesque_guardians,
     hespori,
-    hueycoatl,
+    the_hueycoatl,
     the_inferno,
     kalphite_queen,
     king_black_dragon,
@@ -79,6 +81,7 @@ public enum CollectionLogCategorySlug {
     elite_treasure_trails_rare,
     master_treasure_trails_rare,
     shared_treasure_trail_rewards,
+    scroll_cases,
 
     // Minigames
     barbarian_assault,
@@ -100,10 +103,11 @@ public enum CollectionLogCategorySlug {
     temple_trekking,
     tithe_farm,
     trouble_brewing,
+    vale_totems,
     volcanic_mine,
-    aerial_fishing,
 
     // Other
+    aerial_fishing,
     all_pets,
     camdozaal,
     champions_challenge,
