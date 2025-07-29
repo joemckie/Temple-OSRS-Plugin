@@ -2,7 +2,7 @@
   <configuration default="false" name="TempleOSRSPluginTest" type="Application" factoryName="Application" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="com.templeosrs.TempleOSRSPluginTest" />
     <module name="Temple-OSRS-Plugin.test" />
-    <option name="PROGRAM_PARAMETERS" value="--debug --developer-mode -- --hw-accel=OFF" />
+    <option name="PROGRAM_PARAMETERS" value="--debug --developer-mode --safe-mode" />
     <option name="VM_PARAMETERS" value="-ea" />
     <extension name="coverage">
       <pattern>

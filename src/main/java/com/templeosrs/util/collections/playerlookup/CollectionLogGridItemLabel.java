@@ -10,7 +10,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.game.ItemManager;import net.runelite.client.util.AsyncBufferedImage;
 
 @Slf4j
 public class CollectionLogGridItemLabel extends JLabel
@@ -55,11 +55,13 @@ public class CollectionLogGridItemLabel extends JLabel
 		);
 	}
 
-	public void updateIcon(CollectionLogPlayerLookupPanel playerLookupPanel)
+	public void updateIcon(ItemManager itemManager)
 	{
-		final AsyncBufferedImage img = playerLookupPanel
-			.getItemManager()
-			.getImage(item.getId(), item.getQuantityObtained(), item.getQuantityObtained() > 1);
+		final AsyncBufferedImage img = itemManager.getImage(
+			item.getId(),
+			item.getQuantityObtained(),
+			item.getQuantityObtained() > 1
+		);
 
 		setBackground(getBackgroundColor());
 

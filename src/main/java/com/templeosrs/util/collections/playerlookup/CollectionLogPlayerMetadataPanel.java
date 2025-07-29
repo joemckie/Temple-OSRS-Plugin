@@ -1,9 +1,10 @@
 package com.templeosrs.util.collections.playerlookup;
 
 import java.awt.BorderLayout;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.border.CompoundBorder;import javax.swing.border.EmptyBorder;import javax.swing.border.MatteBorder;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import net.runelite.client.ui.ColorScheme;
 
 public class CollectionLogPlayerMetadataPanel extends JPanel
@@ -20,9 +21,5 @@ public class CollectionLogPlayerMetadataPanel extends JPanel
 			)
 		);
 		setBackground(ColorScheme.DARKER_GRAY_COLOR);
-
-		final JLabel usernameLabel = new JLabel(username);
-
-		add(usernameLabel, BorderLayout.WEST);
 	}
 }
