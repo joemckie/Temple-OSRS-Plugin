@@ -15,7 +15,9 @@ import javax.swing.JScrollPane;
 import javax.swing.border.EmptyBorder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.game.ItemManager;import net.runelite.client.util.SwingUtil;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SpriteManager;
+import net.runelite.client.util.SwingUtil;
 
 @Slf4j
 public class CollectionLogPlayerLookupResultPanel extends JPanel
@@ -23,20 +25,24 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 	@Getter
 	private final List<CollectionLogGridItemLabel> collectionLogGridItems = new ArrayList<>();
 
-	private final List<CollectionLogCategoryItemsPanel> collectionLogCategoryItemsPanels = new ArrayList<>();
-
 	private final JPanel panel = new JPanel();
 
 	@Getter
-	private Map<Integer, CollectionLogItem> obtainedCollectionLogItems;
+	private final Map<Integer, CollectionLogItem> obtainedCollectionLogItems = new HashMap<>();
 
 	private final ItemManager itemManager;
 
-	public CollectionLogPlayerLookupResultPanel(final ItemManager itemManager)
+	private final SpriteManager spriteManager;
+
+	public CollectionLogPlayerLookupResultPanel(
+		final ItemManager itemManager,
+		final SpriteManager spriteManager
+	)
 	{
 		super(new BorderLayout());
 
 		this.itemManager = itemManager;
+		this.spriteManager = spriteManager;
 
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
@@ -48,22 +54,24 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 		add(scrollPane, BorderLayout.CENTER);
 	}
 
-	private void addCollectionLogCategory(final CollectionLogCategory category)
+	private void addCollectionLogCategory(final CollectionLogCategory category, final boolean isExpanded)
 	{
 		final CollectionLogCategoryItemsPanel collectionLogCategoryItemsPanel = new CollectionLogCategoryItemsPanel(
 			category.getItems(),
-			obtainedCollectionLogItems
+			obtainedCollectionLogItems,
+			isExpanded
 		);
 
 		final CollectionLogCategoryHeader collectionLogCategoryHeader = new CollectionLogCategoryHeader(
 			this,
 			collectionLogCategoryItemsPanel,
-			category
+			category,
+			spriteManager,
+			isExpanded
 		);
 
 		collectionLogCategoryItemsPanel.repaintGrid();
 
-		collectionLogCategoryItemsPanels.add(collectionLogCategoryItemsPanel);
 		collectionLogGridItems.addAll(collectionLogCategoryItemsPanel.getCategoryCollectionLogGridItems());
 
 		final JPanel categoryContainer = new JPanel();
@@ -75,66 +83,55 @@ public class CollectionLogPlayerLookupResultPanel extends JPanel
 		panel.add(categoryContainer);
 	}
 
+	public void addMessage(final String message)
+	{
+		panel.add(new JLabel(message), BorderLayout.CENTER);
+	}
+
 	public void rebuildPanel(
 		final String username,
 		final Map<Integer, CollectionLogItem> obtainedCollectionLogItems,
 		final boolean isLoading
 	)
 	{
-		log.debug("username {}, isloading {}", username, isLoading);
-
 		SwingUtil.fastRemoveAll(panel);
-
-		collectionLogCategoryItemsPanels.clear();
 
 		if (isLoading)
 		{
+			log.debug("Rendering loading screen");
+			this.obtainedCollectionLogItems.clear();
+
 			return;
 		}
 
 		if (username == null)
 		{
-			this.obtainedCollectionLogItems = new HashMap<>();
-
-			JLabel noLookupText = new JLabel();
-
-			noLookupText.setText("Search for a user");
-
-			panel.add(noLookupText, BorderLayout.CENTER);
+			log.debug("Rendering no username screen");
+			addMessage("Search for a user");
 
 			return;
 		}
 
 		if (obtainedCollectionLogItems.isEmpty())
 		{
-			this.obtainedCollectionLogItems = new HashMap<>();
-
-			JLabel noResultsText = new JLabel();
-
-			noResultsText.setText("No results found for " + username);
-
-			panel.add(noResultsText, BorderLayout.CENTER);
+			log.debug("Rendering no results screen");
+			addMessage("No results found for " + username);
 
 			return;
 		}
 
-		this.obtainedCollectionLogItems = obtainedCollectionLogItems;
+		this.obtainedCollectionLogItems.putAll(obtainedCollectionLogItems);
 
 		Map<Integer, CollectionLogCategory> collectionLogCategoryItemMap = CollectionLogManager.getCollectionLogCategoryMap();
 
-//		final CollectionLogPlayerMetadataPanel collectionLogPlayerMetadataPanel = new CollectionLogPlayerMetadataPanel(
-//			username
-//		);
-//
-//		add(collectionLogPlayerMetadataPanel, BorderLayout.NORTH);
+		int index = 0;
 
 		for (CollectionLogCategory category : collectionLogCategoryItemMap.values())
 		{
-			addCollectionLogCategory(category);
+			addCollectionLogCategory(category, index == 0);
+			index++;
 		}
 
 		collectionLogGridItems.forEach(gridItem -> gridItem.updateIcon(itemManager));
-
-		collectionLogCategoryItemsPanels.get(0).setVisible(true);
 	}
 }

@@ -24,6 +24,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
@@ -59,7 +60,8 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		final CollectionLogService collectionLogService,
 		final CollectionParser collectionParser,
 		final TempleOSRSPlugin templeOSRSPlugin,
-		final ItemManager itemManager
+		final ItemManager itemManager,
+		final SpriteManager spriteManager
 	)
 	{
 		super(false);
@@ -70,7 +72,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		this.collectionLogService = collectionLogService;
 		this.collectionParser = collectionParser;
 		this.templeOSRSPlugin = templeOSRSPlugin;
-		this.resultsPanel = new CollectionLogPlayerLookupResultPanel(itemManager);
+		this.resultsPanel = new CollectionLogPlayerLookupResultPanel(itemManager, spriteManager);
 
 		setBorder(new EmptyBorder(10, 10, 10, 10));
 		setLayout(new BorderLayout());
@@ -101,10 +103,8 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		refreshPanel();
 	}
 
-	private void setLoading(final boolean loading)
+	private void updateLoadingUI()
 	{
-		this.loading = loading;
-
 		searchBar.setEditable(!loading);
 		searchBar.setIcon(
 			loading
@@ -115,20 +115,25 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 
 	public void lookup(@NonNull String username)
 	{
+		loading = true;
 		lookupUsername = username;
+
 		lookupResult.clear();
 		searchBar.setText(username);
-		setLoading(true);
+
+		updateLoadingUI();
 
 		scheduledExecutorService.execute(() ->
 		{
+
 			String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(username);
 
 			PlayerInfoResponse.Data playerInfo = getPlayerInfo(normalizedPlayerName);
 
 			if (playerInfo == null || playerInfo.getCollectionLog().getLastChanged() == null)
 			{
-				setLoading(false);
+				loading = false;
+				updateLoadingUI();
 
 				// Player has no log
 				refreshPanel();
@@ -185,8 +190,8 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 
 			lookupResult = obtainedCollectionItemMap;
 
-			setLoading(false);
-
+			loading = false;
+			updateLoadingUI();
 			refreshPanel();
 		});
 	}
@@ -203,8 +208,8 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		// RuneScape usernames can't be longer than 12 characters long
 		if (username.length() > MAX_USERNAME_LENGTH)
 		{
-			searchBar.setIcon(IconTextField.Icon.ERROR);
 			loading = false;
+			searchBar.setIcon(IconTextField.Icon.ERROR);
 			return;
 		}
 
@@ -217,7 +222,7 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		{
 			return collectionLogRequestManager.getPlayerInfo(playerName);
 		}
-		catch (IOException e)
+		catch (IOException | NullPointerException e)
 		{
 			return null;
 		}
@@ -228,15 +233,15 @@ public class CollectionLogPlayerLookupPanel extends PluginPanel
 		return lookup.replace('\u00A0', ' ');
 	}
 
+	private void rebuildResultsPanel()
+	{
+		resultsPanel.rebuildPanel(lookupUsername, lookupResult, loading);
+		resultsPanel.revalidate();
+		resultsPanel.repaint();
+	}
+
 	private void refreshPanel()
 	{
-		SwingUtilities.invokeLater(
-			() ->
-			{
-				resultsPanel.rebuildPanel(lookupUsername, lookupResult, loading);
-				resultsPanel.revalidate();
-				resultsPanel.repaint();
-			}
-		);
+		SwingUtilities.invokeLater(this::rebuildResultsPanel);
 	}
 }

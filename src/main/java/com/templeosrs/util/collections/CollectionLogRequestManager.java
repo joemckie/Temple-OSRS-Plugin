@@ -51,44 +51,48 @@ public class CollectionLogRequestManager extends RequestManager {
         post(url, data);
     }
 
-    /**
-     * Retrieves player info from the Player Info endpoint
-     *
-     * @param username The username to check
-     * @link <a href="https://templeosrs.com/api_doc.php#Player_Information">Player Info API</a>
-     */
-    @NotNull
-    public PlayerInfoResponse.Data getPlayerInfo(@NotNull String username) throws IOException, NullPointerException {
-        final HttpUrl url = new HttpUrl.Builder()
-                .scheme(scheme)
-                .host(host)
-                .addPathSegments("api/player_info.php")
-                .addQueryParameter("player", username)
-                .addQueryParameter("cloginfo", "1")
-                .addQueryParameter("formattedrsn", "1")
-                .build();
+	/**
+	* Retrieves player info from the Player Info endpoint
+	*
+	* @param username The username to check
+	* @link <a href="https://templeosrs.com/api_doc.php#Player_Information">Player Info API</a>
+	*/
+	@NotNull
+	public PlayerInfoResponse.Data getPlayerInfo(@NotNull String username) throws IOException, NullPointerException
+	{
+		final HttpUrl url = new HttpUrl.Builder()
+			.scheme(scheme)
+			.host(host)
+			.addPathSegments("api/player_info.php")
+			.addQueryParameter("player", username)
+			.addQueryParameter("cloginfo", "1")
+			.addQueryParameter("formattedrsn", "1")
+			.build();
 
 
-        String response = get(url);
+		String response = get(url);
 
-        PlayerInfoResponse playerInfoResponse = gson.fromJson(response, PlayerInfoResponse.class);
-        PlayerInfoResponse.Data data = playerInfoResponse.getData();
-        APIError error = playerInfoResponse.getError();
+		PlayerInfoResponse playerInfoResponse = gson.fromJson(response, PlayerInfoResponse.class);
+		PlayerInfoResponse.Data data = playerInfoResponse.getData();
+		APIError error = playerInfoResponse.getError();
 
-        if (error != null) {
-            if (error.getCode() == 402) {
-                throw new NullPointerException("Player has no TempleOSRS profile");
-            }
+		if (error != null)
+		{
+			if (error.getCode() == 402)
+			{
+				throw new NullPointerException("Player has no TempleOSRS profile");
+			}
 
-            throw new IOException(String.valueOf(error));
-        }
+			throw new IOException(String.valueOf(error));
+		}
 
-        if (data != null) {
-            return data;
-        }
+		if (data != null)
+		{
+			return data;
+		}
 
-        throw new IOException("Unexpected response format: " + response);
-    }
+		throw new IOException("Unexpected response format: " + response);
+	}
 
     /**
      * Retrieves the given player's full collection log
