@@ -1,5 +1,6 @@
 package com.templeosrs.util.collections.autosync;
 
+import com.templeosrs.TempleOSRSConfig;
 import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.collections.CollectionLogManager;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 
 import javax.inject.Inject;
 import java.util.Set;
@@ -66,8 +68,8 @@ public class CollectionLogAutoSyncConfigChecker {
     public void onGameStateChanged(GameStateChanged event) {
         GameState gameState = event.getGameState();
 
-        if (gameState == GameState.CONNECTION_LOST || gameState == GameState.HOPPING) {
-            lastShownCollectionLogSettingWarningTick = client.getTickCount(); // avoid warning during DC or hopping
+        if (gameState == GameState.CONNECTION_LOST || gameState == GameState.HOPPING || client.getGameState() == GameState.LOGGING_IN) {
+            lastShownCollectionLogSettingWarningTick = client.getTickCount(); // avoid warning during DC, hopping or logging in
         }
 
         if (gameState == GameState.LOGIN_SCREEN) {
@@ -88,6 +90,25 @@ public class CollectionLogAutoSyncConfigChecker {
     }
 
     /**
+     * Warns user on config changes that auto sync requires a specific in-game setting to be enabled.
+     */
+    @Subscribe
+    private void onConfigChanged(ConfigChanged event) {
+        // Exit if setting change isn't for auto sync, player isn't logged in or the required setting is already on
+        if (!event.getGroup().equals(TempleOSRSConfig.TEMPLE_OSRS_CONFIG_GROUP) || !event.getKey().equals("autoSyncClog") || loggedInState.isLoggedOut() || !templeOSRSPlugin.getConfig().autoSyncClog()) return;
+
+        collectionLogManager.getClientThread().invoke(() -> {
+            final int SETTING_STATUS = client.getVarbitValue(VarbitID.OPTION_COLLECTION_NEW_ITEM);
+            final boolean REQUIRED_SETTING_DISABLED = !enabledCollectionLogNotificationSettingValues.contains(SETTING_STATUS);
+
+            if (REQUIRED_SETTING_DISABLED) {
+                lastShownCollectionLogSettingWarningTick = client.getTickCount();
+                sendEnableCollectionLogSettingsMessage();
+            }
+        });
+    }
+
+    /**
      * If the auto-sync clog option is enabled, the warning has not been shown recently, and the
      * clog notification option is disabled, shows a warning to the player to tell them to enable the in-game option.
      */
@@ -95,8 +116,7 @@ public class CollectionLogAutoSyncConfigChecker {
         if (
                 !templeOSRSPlugin.getConfig().autoSyncClog() ||
                 loggedInState.isLoggedOut() ||
-                (lastShownCollectionLogSettingWarningTick != -1 &&
-                        client.getTickCount() - lastShownCollectionLogSettingWarningTick < 16) ||
+                (lastShownCollectionLogSettingWarningTick != -1 && client.getTickCount() - lastShownCollectionLogSettingWarningTick < 16) ||
                 enabledCollectionLogNotificationSettingValues.contains(collectionLogOptionVarbitValue)
         ) {
             return;
