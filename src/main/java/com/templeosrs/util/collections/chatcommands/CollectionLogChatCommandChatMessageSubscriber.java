@@ -50,6 +50,7 @@ public class CollectionLogChatCommandChatMessageSubscriber
 		ChatMessageType.PRIVATECHAT,
 		ChatMessageType.CLAN_CHAT,
 		ChatMessageType.CLAN_GIM_MESSAGE,
+		ChatMessageType.CLAN_GIM_CHAT,
 		ChatMessageType.CLAN_GUEST_CHAT
 	);
 
