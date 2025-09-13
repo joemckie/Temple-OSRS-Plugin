@@ -33,6 +33,7 @@ import com.templeosrs.ui.ranks.TempleRanks;
 import com.templeosrs.util.TempleService;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.SyncButtonManager;
+import com.templeosrs.util.collections.chatcommands.ChatItemNameTooltip;
 import lombok.Getter;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -57,6 +58,7 @@ import net.runelite.client.plugins.xpupdater.XpUpdaterConfig;
 import net.runelite.client.plugins.xpupdater.XpUpdaterPlugin;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
@@ -118,6 +120,12 @@ public class TempleOSRSPlugin extends Plugin {
     @Inject
     private CollectionLogManager clogManager;
 
+	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private ChatItemNameTooltip chatItemNameTooltip;
+
     @Override
     protected void startUp() {
         fetchXp = true;
@@ -147,6 +155,11 @@ public class TempleOSRSPlugin extends Plugin {
         }
 
         clogManager.startUp();
+
+		if (config.enableClogChatCommand() && config.enableClogChatCommandItemNameTooltip())
+		{
+			overlayManager.add(chatItemNameTooltip);
+		}
     }
 
     @Override
@@ -156,8 +169,15 @@ public class TempleOSRSPlugin extends Plugin {
         if (client != null) {
             menuManager.get().removePlayerMenuItem(TEMPLE);
         }
+
         ranks.shutdown();
+
         clogManager.shutDown();
+
+		if (config.enableClogChatCommand() && config.enableClogChatCommandItemNameTooltip())
+		{
+			overlayManager.remove(chatItemNameTooltip);
+		}
     }
 
     @Subscribe
@@ -203,6 +223,15 @@ public class TempleOSRSPlugin extends Plugin {
                 } else {
                     syncButtonManager.shutDown();
                 }
+
+				if (config.enableClogChatCommand() && config.enableClogChatCommandItemNameTooltip())
+				{
+					overlayManager.add(chatItemNameTooltip);
+				}
+				else
+				{
+					overlayManager.remove(chatItemNameTooltip);
+				}
 
                 clans.repaint();
                 clans.revalidate();

@@ -281,16 +281,6 @@ public interface TempleOSRSConfig extends Config
 		return false;
 	}
 
-	@ConfigItem(
-			keyName = "enableClogChatCommand",
-			name = "Enable !col chat command",
-			description = "When enabled, the plugin will detect any !col chat messages and replace the contents with " +
-					"TempleOSRS log data, if available",
-			position = 4,
-			section = clogOptions
-	)
-	default boolean enableClogChatCommand() { return true; }
-
 	@Range(min = 50, max = 200)
 	@ConfigItem(
 			keyName = "maxCachedPlayers",
@@ -302,4 +292,26 @@ public interface TempleOSRSConfig extends Config
 			section = clogOptions
 	)
 	default int maxCachedPlayers() { return 50; }
+
+	@ConfigItem(
+			keyName = "enableClogChatCommand",
+			name = "Enable !col chat command",
+			description = "When enabled, the plugin will detect any !col chat messages and replace the contents with " +
+					"TempleOSRS log data, if available",
+			position = 4,
+			section = clogOptions
+	)
+	default boolean enableClogChatCommand() { return true; }
+
+	@ConfigItem(
+		keyName = "enableClogChatCommandItemNameTooltip",
+		name = "Enable !col item name tooltip",
+		description = "When enabled, hovering over an item icon in the !col command's message will reveal the item's name.",
+		position = 5,
+		section = clogOptions
+	)
+	default boolean enableClogChatCommandItemNameTooltip()
+	{
+		return true;
+	}
 }

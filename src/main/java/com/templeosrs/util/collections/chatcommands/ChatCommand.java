@@ -5,11 +5,7 @@ import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
@@ -19,13 +15,9 @@ import net.runelite.client.chat.ChatColorType;
 import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
-import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
-import java.awt.image.BufferedImage;
 import java.util.Set;
 
 @Slf4j
@@ -49,6 +41,9 @@ public abstract class ChatCommand {
     @Inject
     protected ItemManager itemManager;
 
+	@Inject
+	protected ItemSpriteManager itemSpriteManager;
+
     /**
      * The chat message that triggers the command, e.g. "!col help"
      */
@@ -65,17 +60,8 @@ public abstract class ChatCommand {
     private final boolean onlyShowForLocalPlayer;
 
 	/**
-	 * Maintain a map of item IDs to their respective index in the icon list
-	 */
-	protected final Map<Integer, Integer> itemIconIndexes = new HashMap<>();
-
-	/**
-	 * Maintain a list of previously seen item icons to avoid loading them twice
-	 */
-	protected final Set<Integer> loadedItemIds = new HashSet<>();
-
-    /**
      * Checks whether the message sender is the currently logged in player
+     *
      * @param event the ChatMessage event
      * @return true if the message sender if the currently logged in player
      */
@@ -109,6 +95,7 @@ public abstract class ChatCommand {
      * Outputs a list of all available collection log categories.
      * As this is derived from the in-game cache,
      * it will always be up-to-date with the latest changes (unless a new tab is added).
+     *
      * @param categoryGroup The category group (i.e. tab) for which to list items
      */
     public void listAvailableCollectionLogCategories(CollectionLogCategoryGroup categoryGroup)
@@ -132,14 +119,14 @@ public abstract class ChatCommand {
 				return new ArrayList<>(categoryItems).get(0);
 			}).collect(Collectors.toList());
 
-			loadItemIcons(iconItemIds);
+			itemSpriteManager.loadItemSprites(iconItemIds);
 
 			int i = 0;
 
             for (String categorySlug : categorySlugs) {
                 int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categorySlug);
                 String categoryTitle = client.getStructComposition(structId).getStringValue(689);
-				int iconIndex = itemIconIndexes.get(iconItemIds.get(i++));
+				int iconIndex = itemSpriteManager.getItemSpriteIndexes().get(iconItemIds.get(i++));
 
 				ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder()
                         .append(ChatColorType.NORMAL)
@@ -169,54 +156,6 @@ public abstract class ChatCommand {
         });
     }
 
-	/**
-	 * Loads the in-game icons for a given item list, ready to be used in the chat message.
-	 * @param iconItemIds The item list for which to load item icons.
-	 */
-	protected void loadItemIcons(List<Integer> iconItemIds)
-	{
-		// Starting with an empty list, we find which icons haven't previously been seen
-		List<Integer> newItems = new ArrayList<>();
-
-		for (int itemId : iconItemIds) {
-			if (!loadedItemIds.contains(itemId)) {
-				newItems.add(itemId);
-				loadedItemIds.add(itemId);
-			}
-		}
-
-		if (newItems.isEmpty()) {
-			return;
-		}
-
-		final IndexedSprite[] modIcons = client.getModIcons();
-
-		assert modIcons != null;
-
-		final IndexedSprite[] newModIcons = Arrays.copyOf(modIcons, modIcons.length + iconItemIds.size());
-		final int iconIndex = modIcons.length;
-
-		client.setModIcons(newModIcons);
-
-		int i = 0;
-
-		for (int itemId : iconItemIds) {
-			final AsyncBufferedImage img = itemManager.getImage(itemId);
-			final int idx = iconIndex + i++;
-
-			itemIconIndexes.put(itemId, idx);
-
-			img.onLoaded(() ->
-			{
-				final BufferedImage image = ImageUtil.resizeImage(img, 18, 16);
-				final IndexedSprite sprite = ImageUtil.getImageIndexedSprite(image, client);
-				// modicons array might be replaced in between when we assign it and the callback,
-				// so fetch modicons again
-				client.getModIcons()[idx] = sprite;
-			});
-		}
-	}
-
     /**
      * Executes the chat command handler.
      * If it has been configured to only show for the current player, it will not be triggered for anyone else.
@@ -234,7 +173,7 @@ public abstract class ChatCommand {
     public void command(ChatMessage event) {}
 
     public void shutDown() {
-		itemIconIndexes.clear();
-		loadedItemIds.clear();
+		itemSpriteManager.itemSpriteIndexes.clear();
+		itemSpriteManager.loadedItemIds.clear();
 	}
 }

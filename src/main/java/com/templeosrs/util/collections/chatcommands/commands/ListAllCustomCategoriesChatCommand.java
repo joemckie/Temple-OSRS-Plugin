@@ -36,12 +36,12 @@ public class ListAllCustomCategoriesChatCommand extends ChatCommand {
 				.map(item -> item.getItems().iterator().next())
 				.collect(Collectors.toList());
 
-			loadItemIcons(iconItemIds);
+			itemSpriteManager.loadItemSprites(iconItemIds);
 
 			int i = 0;
 
             for (Map.Entry<String, CollectionLogCategory> customCategory : CollectionLogCategoryUtils.CUSTOM_CATEGORIES.entrySet()) {
-				int iconIndex = itemIconIndexes.get(iconItemIds.get(i++));
+				int iconIndex = itemSpriteManager.getItemSpriteIndexes().get(iconItemIds.get(i++));
 
                 chatMessageManager.queue(
                     QueuedMessage.builder()

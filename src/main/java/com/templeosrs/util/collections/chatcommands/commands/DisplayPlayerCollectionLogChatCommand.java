@@ -180,7 +180,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 					new LinkedHashSet<>(category.getItems())
             );
 
-            loadItemIcons(
+            itemSpriteManager.loadItemSprites(
 				items
 					.stream()
 					.map(ObtainedCollectionItem::getId)
@@ -216,7 +216,7 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 
                 for (ObtainedCollectionItem item : items)
                 {
-                    Integer iconIndex = itemIconIndexes.get(item.getId());
+                    Integer iconIndex = itemSpriteManager.getItemSpriteIndexes().get(item.getId());
 
                     if (iconIndex != null) {
                         chatMessageBuilder.img(iconIndex);
