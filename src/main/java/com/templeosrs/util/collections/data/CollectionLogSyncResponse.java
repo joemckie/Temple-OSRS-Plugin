@@ -2,34 +2,35 @@ package com.templeosrs.util.collections.data;
 
 import com.google.gson.annotations.SerializedName;
 import com.templeosrs.util.api.APIError;
+import javax.annotation.Nullable;
 import lombok.Value;
 
-import javax.annotation.Nullable;
-
 @Value
-public class CollectionLogSyncResponse {
-    @Value
-    public static class Data {
-        @SerializedName("sync_date")
-        String syncDate;
+public class CollectionLogSyncResponse
+{
+	@Nullable
+	Data data;
+	
+	@Nullable
+	APIError error;
 
-        @SerializedName("sync_date_unix")
-        int syncDateUnix;
+	@Value
+	public static class Data
+	{
+		@SerializedName("sync_date")
+		String syncDate;
 
-        @SerializedName("last_changed")
-        String lastChanged;
+		@SerializedName("sync_date_unix")
+		int syncDateUnix;
 
-        @SerializedName("last_changed_unix")
-        int lastChangedUnix;
+		@SerializedName("last_changed")
+		String lastChanged;
 
-        String username;
+		@SerializedName("last_changed_unix")
+		int lastChangedUnix;
 
-        String message;
-    }
+		String username;
 
-    @Nullable
-    Data data;
-
-    @Nullable
-    APIError error;
+		String message;
+	}
 }

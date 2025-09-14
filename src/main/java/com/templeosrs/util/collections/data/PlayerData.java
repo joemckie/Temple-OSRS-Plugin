@@ -25,15 +25,14 @@
 
 package com.templeosrs.util.collections.data;
 
+import java.util.Set;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-
-import java.util.Set;
 
 @Data
 @AllArgsConstructor
 public class PlayerData
 {
-    public int totalCollectionsAvailable;
-    public Set<ObtainedCollectionItem> obtainedItems;
+	public int totalCollectionsAvailable;
+	public Set<ObtainedCollectionItem> obtainedItems;
 }

@@ -29,6 +29,10 @@ import net.runelite.client.util.Text;
 @Slf4j
 public class ChatItemNameTooltip extends Overlay
 {
+	private final Pattern itemIdPattern = Pattern.compile("<img=(\\d+)>(x\\d+(,\\s)?)");
+
+	private final Pattern prefixPattern = Pattern.compile("([\\w\\s'()]+ \\(\\d+/\\d+\\): )");
+
 	@Inject
 	private TooltipManager tooltipManager;
 
@@ -40,13 +44,9 @@ public class ChatItemNameTooltip extends Overlay
 
 	@Inject
 	private Client client;
-
+	
 	@Inject
 	private TempleOSRSConfig config;
-
-	private final Pattern itemIdPattern = Pattern.compile("<img=(\\d+)>(x\\d+(,\\s)?)");
-
-	private final Pattern prefixPattern = Pattern.compile("([\\w\\s'()]+ \\(\\d+/\\d+\\): )");
 
 	@Inject
 	private ChatItemNameTooltip()

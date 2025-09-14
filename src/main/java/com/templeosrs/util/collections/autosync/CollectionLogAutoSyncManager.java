@@ -7,10 +7,15 @@ import com.templeosrs.util.api.APIError;
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.CollectionLogManager;
 import com.templeosrs.util.collections.CollectionLogRequestManager;
+import com.templeosrs.util.collections.data.CollectionLogSyncResponse;
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
 import com.templeosrs.util.collections.data.PlayerProfile;
 import com.templeosrs.util.collections.database.CollectionDatabase;
-import com.templeosrs.util.collections.data.CollectionLogSyncResponse;
+import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
+import javax.inject.Inject;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Synchronized;
@@ -26,15 +31,21 @@ import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import org.jetbrains.annotations.Nullable;
 
-import javax.inject.Inject;
-import java.io.IOException;
-import java.sql.Timestamp;
-import java.util.HashSet;
-import java.util.Set;
-
 @Slf4j
 public class CollectionLogAutoSyncManager
 {
+	@Getter
+	protected final HashSet<String> obtainedItemNames = new HashSet<>();
+
+	/**
+	 * Keeps track of what item IDs are pending a server sync
+	 */
+	@Getter
+	protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
+
+	@Getter
+	QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
+
 	@Inject
 	private CollectionLogAutoSyncChatMessageSubscriber collectionLogAutoSyncChatMessageSubscriber;
 
@@ -72,9 +83,6 @@ public class CollectionLogAutoSyncManager
 	private Gson gson;
 
 	@Getter
-	protected final HashSet<String> obtainedItemNames = new HashSet<>();
-
-	@Getter
 	@Nullable
 	private Integer gameTickToSync;
 
@@ -85,19 +93,10 @@ public class CollectionLogAutoSyncManager
 	@Getter
 	@Setter
 	private boolean logOpenAutoSync;
-
+	
 	@Getter
 	@Setter
 	private boolean computingDiff;
-
-	@Getter
-	QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
-
-	/**
-	 * Keeps track of what item IDs are pending a server sync
-	 */
-	@Getter
-	protected final HashSet<ObtainedCollectionItem> pendingSyncItems = new HashSet<>();
 
 	public void startUp()
 	{

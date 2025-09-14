@@ -1,18 +1,15 @@
 package com.templeosrs.collectionlog.autosync;
 
 import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import java.util.HashSet;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemStack;
-import org.apache.commons.lang3.tuple.Pair;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.HashSet;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.when;
 
 public class CollectionLogAutoSyncServerNpcLootSubscriberTest extends MockedCollectionLogAutoSyncTest
