@@ -10,7 +10,7 @@ public class PlayerInfoResponse
 {
 	@Nullable
 	Data data;
-	
+
 	@Nullable
 	APIError error;
 
