@@ -93,7 +93,7 @@ public class CollectionLogAutoSyncManager
 	@Getter
 	@Setter
 	private boolean logOpenAutoSync;
-	
+
 	@Getter
 	@Setter
 	private boolean computingDiff;

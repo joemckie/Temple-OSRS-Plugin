@@ -44,7 +44,7 @@ public class ChatItemNameTooltip extends Overlay
 
 	@Inject
 	private Client client;
-	
+
 	@Inject
 	private TempleOSRSConfig config;
 
