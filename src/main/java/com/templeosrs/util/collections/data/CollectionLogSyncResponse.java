@@ -10,7 +10,7 @@ public class CollectionLogSyncResponse
 {
 	@Nullable
 	Data data;
-	
+
 	@Nullable
 	APIError error;
 

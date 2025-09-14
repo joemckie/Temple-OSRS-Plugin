@@ -9,7 +9,7 @@ import lombok.Value;
 public class CollectionLogResponse
 {
 	Data data;
-	
+
 	APIError error;
 
 	@Value

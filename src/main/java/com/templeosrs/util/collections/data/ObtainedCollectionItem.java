@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 public class ObtainedCollectionItem
 {
 	int id;
-	
+
 	int count;
 
 	String date;

@@ -36,7 +36,7 @@ public class ItemSpriteManager
 	 */
 	@Getter
 	protected final Map<Integer, Integer> spriteItemIds = new HashMap<>();
-	
+
 	/**
 	 * Maintain a list of previously seen item sprites to avoid loading them twice
 	 */
