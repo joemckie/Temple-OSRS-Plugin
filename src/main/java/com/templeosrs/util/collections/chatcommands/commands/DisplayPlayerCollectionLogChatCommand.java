@@ -13,7 +13,13 @@ import com.templeosrs.util.collections.parser.CollectionParser;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCategoryUtils;
 import com.templeosrs.util.collections.utils.PlayerNameUtils;
+import java.io.IOException;
+import java.util.LinkedHashSet;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
+import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.StructComposition;
@@ -23,50 +29,47 @@ import net.runelite.client.chat.ChatMessageBuilder;
 import net.runelite.client.chat.ChatMessageManager;
 import net.runelite.client.chat.QueuedMessage;
 
-import javax.inject.Inject;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
-
 @Slf4j
-public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
-    @Inject
-    private ChatMessageManager chatMessageManager;
+public class DisplayPlayerCollectionLogChatCommand extends ChatCommand
+{
+	@Inject
+	private ChatMessageManager chatMessageManager;
 
-    @Inject
-    private ScheduledExecutorService scheduledExecutorService;
+	@Inject
+	private ScheduledExecutorService scheduledExecutorService;
 
-    @Inject
-    private CollectionLogRequestManager collectionLogRequestManager;
+	@Inject
+	private CollectionLogRequestManager collectionLogRequestManager;
 
-    @Inject
-    private TempleOSRSPlugin templeOSRSPlugin;
+	@Inject
+	private TempleOSRSPlugin templeOSRSPlugin;
 
-    @Inject
-    private CollectionParser collectionParser;
+	@Inject
+	private CollectionParser collectionParser;
 
-    @Inject
-    private CollectionLogService collectionLogService;
+	@Inject
+	private CollectionLogService collectionLogService;
 
-    public DisplayPlayerCollectionLogChatCommand()
+	public DisplayPlayerCollectionLogChatCommand()
 	{
 		super("!col ", "Displays the player's collection log for a given boss. May also be used to display other players' logs, e.g. !col kree CousinOfKos", false);
 	}
 
-    @Override
-    public void command(ChatMessage event)
+	@Override
+	public void command(ChatMessage event)
 	{
-        final String rawMessage = event.getMessage().trim();
+		final String rawMessage = event.getMessage().trim();
 
-        final String[] parts = rawMessage.substring(5).trim().split(" ", 2);
+		final String[] parts = rawMessage.substring(5).trim().split(" ", 2);
 
-        if (parts.length == 0) {
-            return;
-        }
+		if (parts.length == 0)
+		{
+			return;
+		}
 
-        // Normalize boss name
-        final String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
-        final CollectionLogCategory category = getCategoryFromMessageInput(bossInput);
+		// Normalize boss name
+		final String bossInput = parts[0].trim().replace(' ', '_').toLowerCase();
+		final CollectionLogCategory category = getCategoryFromMessageInput(bossInput);
 
 		// For outgoing PMs, the message should show the current player's log,
 		// but the event contains the recipient's name.
@@ -74,128 +77,134 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 			? client.getLocalPlayer().getName()
 			: event.getName();
 
-        // Determine target player (specified or sender)
-        final String playerName = (parts.length == 2) ? parts[1].trim() : senderName;
+		// Determine target player (specified or sender)
+		final String playerName = (parts.length == 2) ? parts[1].trim() : senderName;
 
-        final String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(playerName);  // Normalize the player name for the API call
-        final String localName = PlayerNameUtils.normalizePlayerName(client.getLocalPlayer().getName());
-        final boolean isLocalPlayer = normalizedPlayerName.equalsIgnoreCase(localName);
+		final String normalizedPlayerName = PlayerNameUtils.normalizePlayerName(playerName);  // Normalize the player name for the API call
+		final String localName = PlayerNameUtils.normalizePlayerName(client.getLocalPlayer().getName());
+		final boolean isLocalPlayer = normalizedPlayerName.equalsIgnoreCase(localName);
 
-        if (category == null) {
-            if (isLocalPlayer) {
-                log.warn("❌ No alias or category found for {}", bossInput);
+		if (category == null)
+		{
+			if (isLocalPlayer)
+			{
+				log.warn("❌ No alias or category found for {}", bossInput);
 
-                final String errorMessage = new ChatMessageBuilder()
-                    .append(ChatColorType.NORMAL)
-                    .append("Use ")
-                    .append(ChatColorType.HIGHLIGHT)
-                    .append("!col help")
-                    .append(ChatColorType.NORMAL)
-                    .append(" to help find the correct category.")
-                    .build();
+				final String errorMessage = new ChatMessageBuilder()
+					.append(ChatColorType.NORMAL)
+					.append("Use ")
+					.append(ChatColorType.HIGHLIGHT)
+					.append("!col help")
+					.append(ChatColorType.NORMAL)
+					.append(" to help find the correct category.")
+					.build();
 
-                chatMessageManager.queue(
-                    QueuedMessage.builder()
-                        .type(ChatMessageType.CONSOLE)
-                        .runeLiteFormattedMessage(errorMessage)
-                        .build()
-                );
-            }
+				chatMessageManager.queue(
+					QueuedMessage.builder()
+						.type(ChatMessageType.CONSOLE)
+						.runeLiteFormattedMessage(errorMessage)
+						.build()
+				);
+			}
 
-            overwriteMessage(
-                new ChatMessageBuilder()
-                    .append(ChatColorType.HIGHLIGHT)
-                    .append(bossInput)
-                    .append(ChatColorType.NORMAL)
-                    .append(" is not a valid collection log category or alias.")
-                    .build(),
-                event.getMessageNode()
-            );
+			overwriteMessage(
+				new ChatMessageBuilder()
+					.append(ChatColorType.HIGHLIGHT)
+					.append(bossInput)
+					.append(ChatColorType.NORMAL)
+					.append(" is not a valid collection log category or alias.")
+					.build(),
+				event.getMessageNode()
+			);
 
-            return;
-        }
+			return;
+		}
 
-        scheduledExecutorService.execute(() ->
-        {
-            final PlayerInfoResponse.Data playerInfo = getPlayerInfo(normalizedPlayerName, event);
+		scheduledExecutorService.execute(() ->
+		{
+			final PlayerInfoResponse.Data playerInfo = getPlayerInfo(normalizedPlayerName, event);
 
-            if (playerInfo == null) {
-                // Error messages are handled when getting the player info
-                return;
-            }
+			if (playerInfo == null)
+			{
+				// Error messages are handled when getting the player info
+				return;
+			}
 
-            final String prettyPlayerName = playerInfo.getPlayerNameWithCapitalization();
+			final String prettyPlayerName = playerInfo.getPlayerNameWithCapitalization();
 
-            if (playerInfo.getCollectionLog().getLastChanged() == null) {
-                overwriteMessage(
-                    new ChatMessageBuilder()
-                        .append(ChatColorType.NORMAL)
-                        .append("No TempleOSRS collection log found for ")
-                        .append(ChatColorType.HIGHLIGHT)
-                        .append(prettyPlayerName)
-                        .append(".")
-                        .build(),
-                    event.getMessageNode()
-                );
+			if (playerInfo.getCollectionLog().getLastChanged() == null)
+			{
+				overwriteMessage(
+					new ChatMessageBuilder()
+						.append(ChatColorType.NORMAL)
+						.append("No TempleOSRS collection log found for ")
+						.append(ChatColorType.HIGHLIGHT)
+						.append(prettyPlayerName)
+						.append(".")
+						.build(),
+					event.getMessageNode()
+				);
 
-                return;
-            }
+				return;
+			}
 
-            final String lastChanged = playerInfo.getCollectionLog().getLastChanged();
+			final String lastChanged = playerInfo.getCollectionLog().getLastChanged();
 
-            final boolean isDataStale = !collectionLogService.isDataFresh(normalizedPlayerName, lastChanged);
-            final boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
-            final boolean shouldUpdate = !hasLocalData || isDataStale;
+			final boolean isDataStale = !collectionLogService.isDataFresh(normalizedPlayerName, lastChanged);
+			final boolean hasLocalData = CollectionDatabase.hasPlayerData(normalizedPlayerName);
+			final boolean shouldUpdate = !hasLocalData || isDataStale;
 
-            if (shouldUpdate)
-            {
-                log.debug("📭 No local data for '{}', fetching from API...", normalizedPlayerName);
-                final String json = collectionLogRequestManager.getPlayerCollectionLog(normalizedPlayerName);
+			if (shouldUpdate)
+			{
+				log.debug("📭 No local data for '{}', fetching from API...", normalizedPlayerName);
+				final String json = collectionLogRequestManager.getPlayerCollectionLog(normalizedPlayerName);
 
-                if (json == null) {
-                    log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
+				if (json == null)
+				{
+					log.warn("❌ No data fetched for user: {}", normalizedPlayerName);
 
-                    overwriteMessage(
-                        new ChatMessageBuilder()
-                            .append(ChatColorType.NORMAL)
-                            .append("Failed to fetch log for ")
-                            .append(ChatColorType.HIGHLIGHT)
-                            .append(prettyPlayerName)
-                            .append(ChatColorType.NORMAL)
-                            .append(".")
-                            .build(),
-                        event.getMessageNode()
-                    );
+					overwriteMessage(
+						new ChatMessageBuilder()
+							.append(ChatColorType.NORMAL)
+							.append("Failed to fetch log for ")
+							.append(ChatColorType.HIGHLIGHT)
+							.append(prettyPlayerName)
+							.append(ChatColorType.NORMAL)
+							.append(".")
+							.build(),
+						event.getMessageNode()
+					);
 
-                    return;
-                }
+					return;
+				}
 
-                if (!isLocalPlayer) {
-                    CollectionDatabase.pruneOldPlayers(localName, templeOSRSPlugin.getConfig().maxCachedPlayers());
-                }
+				if (!isLocalPlayer)
+				{
+					CollectionDatabase.pruneOldPlayers(localName, templeOSRSPlugin.getConfig().maxCachedPlayers());
+				}
 
-                collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(playerName), json);
-            }
-            else
-            {
-                log.debug("✔️ Found cached data for '{}'", normalizedPlayerName);
-            }
+				collectionParser.parseAndStore(PlayerNameUtils.normalizePlayerName(playerName), json);
+			}
+			else
+			{
+				log.debug("✔️ Found cached data for '{}'", normalizedPlayerName);
+			}
 
-            // Fetch the requested category
-            final Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
-                    normalizedPlayerName,
-					new LinkedHashSet<>(category.getItems())
-            );
+			// Fetch the requested category
+			final Set<ObtainedCollectionItem> items = CollectionDatabase.getItemsByCategory(
+				normalizedPlayerName,
+				new LinkedHashSet<>(category.getItems())
+			);
 
-            itemSpriteManager.loadItemSprites(
+			itemSpriteManager.loadItemSprites(
 				items
 					.stream()
 					.map(ObtainedCollectionItem::getId)
 					.collect(Collectors.toList())
 			);
 
-            final ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
-            final String categoryName = category.getTitle();
+			final ChatMessageBuilder chatMessageBuilder = new ChatMessageBuilder();
+			final String categoryName = category.getTitle();
 
 			assert senderName != null;
 
@@ -217,91 +226,106 @@ public class DisplayPlayerCollectionLogChatCommand extends ChatCommand  {
 				.append(getLogProgress(items.size(), category.getItems().size()))
 				.append(": ");
 
-            if (items.isEmpty()) {
-                chatMessageBuilder.append("No obtained collection log items.");
-            } else {
-                int i = 0;
+			if (items.isEmpty())
+			{
+				chatMessageBuilder.append("No obtained collection log items.");
+			}
+			else
+			{
+				int i = 0;
 
-                for (ObtainedCollectionItem item : items)
-                {
-                    final Integer iconIndex = itemSpriteManager.getItemSpriteIndexes().get(item.getId());
+				for (ObtainedCollectionItem item : items)
+				{
+					final Integer iconIndex = itemSpriteManager.getItemSpriteIndexes().get(item.getId());
 
-                    if (iconIndex != null) {
-                        chatMessageBuilder.img(iconIndex);
-                    }
+					if (iconIndex != null)
+					{
+						chatMessageBuilder.img(iconIndex);
+					}
 
-                    chatMessageBuilder
-                            .append("x")
-                            .append(String.valueOf(item.getCount()));
+					chatMessageBuilder
+						.append("x")
+						.append(String.valueOf(item.getCount()));
 
-                    if (i++ < items.size() - 1) {
-                        chatMessageBuilder.append(", ");
-                    }
-                }
-            }
+					if (i++ < items.size() - 1)
+					{
+						chatMessageBuilder.append(", ");
+					}
+				}
+			}
 
-            overwriteMessage(chatMessageBuilder.build(), event.getMessageNode());
-        });
-    }
+			overwriteMessage(chatMessageBuilder.build(), event.getMessageNode());
+		});
+	}
 
-    private PlayerInfoResponse.Data getPlayerInfo(String playerName, ChatMessage chatMessage)
-    {
-        try {
-            return collectionLogRequestManager.getPlayerInfo(playerName);
-        } catch (NullPointerException e) {
-            overwriteMessage(
-                new ChatMessageBuilder()
-                    .append(ChatColorType.NORMAL)
-                    .append("Unable to find ")
-                    .append(ChatColorType.HIGHLIGHT)
-                    .append(playerName)
-                    .append(ChatColorType.NORMAL)
-                    .append(" on TempleOSRS.")
-                    .build(),
-                chatMessage.getMessageNode()
-            );
-        } catch (IOException e) {
-            overwriteMessage(
-                new ChatMessageBuilder()
-                    .append(ChatColorType.NORMAL)
-                    .append("Failed to fetch from TempleOSRS.")
-                    .build(),
-                chatMessage.getMessageNode()
-            );
-        }
+	private PlayerInfoResponse.Data getPlayerInfo(String playerName, ChatMessage chatMessage)
+	{
+		try
+		{
+			return collectionLogRequestManager.getPlayerInfo(playerName);
+		}
+		catch (NullPointerException e)
+		{
+			overwriteMessage(
+				new ChatMessageBuilder()
+					.append(ChatColorType.NORMAL)
+					.append("Unable to find ")
+					.append(ChatColorType.HIGHLIGHT)
+					.append(playerName)
+					.append(ChatColorType.NORMAL)
+					.append(" on TempleOSRS.")
+					.build(),
+				chatMessage.getMessageNode()
+			);
+		}
+		catch (IOException e)
+		{
+			overwriteMessage(
+				new ChatMessageBuilder()
+					.append(ChatColorType.NORMAL)
+					.append("Failed to fetch from TempleOSRS.")
+					.build(),
+				chatMessage.getMessageNode()
+			);
+		}
 
-        return null;
-    }
+		return null;
+	}
 
-    private String getCategoryKeyFromMessageInput(String bossInput)
-    {
-        try {
-            final CollectionLogCategorySlug categorySlug = Objects.requireNonNullElseGet(
-                    CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput),
-                    () -> CollectionLogCategorySlug.valueOf(bossInput)
-            );
+	private String getCategoryKeyFromMessageInput(String bossInput)
+	{
+		try
+		{
+			final CollectionLogCategorySlug categorySlug = Objects.requireNonNullElseGet(
+				CollectionLogCategoryUtils.CATEGORY_ALIASES.get(bossInput),
+				() -> CollectionLogCategorySlug.valueOf(bossInput)
+			);
 
-            return categorySlug.toString();
-        } catch (IllegalArgumentException e) {
-            return bossInput;
-        }
-    }
+			return categorySlug.toString();
+		}
+		catch (IllegalArgumentException e)
+		{
+			return bossInput;
+		}
+	}
 
-    private CollectionLogCategory getCategoryFromMessageInput(String bossInput)
-    {
-        final String categoryKey = getCategoryKeyFromMessageInput(bossInput);
-        final CollectionLogCategory customCategory = CollectionLogCategoryUtils.CUSTOM_CATEGORIES.get(bossInput);
+	private CollectionLogCategory getCategoryFromMessageInput(String bossInput)
+	{
+		final String categoryKey = getCategoryKeyFromMessageInput(bossInput);
+		final CollectionLogCategory customCategory = CollectionLogCategoryUtils.CUSTOM_CATEGORIES.get(bossInput);
 
-        if (customCategory != null) {
-            return customCategory;
-        }
+		if (customCategory != null)
+		{
+			return customCategory;
+		}
 
-        try {
-            final int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
+		try
+		{
+			final int structId = CollectionLogManager.getCollectionLogCategoryStructIdMap().get(categoryKey);
 
-            final StructComposition categoryStruct = client.getStructComposition(structId);
-            final String categoryTitle = categoryStruct.getStringValue(689);
-            final Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
+			final StructComposition categoryStruct = client.getStructComposition(structId);
+			final String categoryTitle = categoryStruct.getStringValue(689);
+			final Set<Integer> categoryItems = CollectionLogManager.getCollectionLogCategoryItemMap().get(categoryStruct.getId());
 
 			return new CollectionLogCategory(categoryTitle, categoryItems);
 		}

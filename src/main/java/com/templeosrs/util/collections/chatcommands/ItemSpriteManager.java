@@ -25,12 +25,6 @@ public class ItemSpriteManager
 	public static final int SPRITE_WIDTH = 18;
 	public static final int SPRITE_HEIGHT = 14;
 
-	@Inject
-	private Client client;
-
-	@Inject
-	private ItemManager itemManager;
-
 	/**
 	 * Maintain a map of item IDs to their respective index in the sprite list
 	 */
@@ -47,6 +41,12 @@ public class ItemSpriteManager
 	 * Maintain a list of previously seen item sprites to avoid loading them twice
 	 */
 	protected final Set<Integer> loadedItemIds = new HashSet<>();
+
+	@Inject
+	private Client client;
+
+	@Inject
+	private ItemManager itemManager;
 
 	/**
 	 * Loads the in-game icon sprites for a given item list, ready to be used in the chat message.

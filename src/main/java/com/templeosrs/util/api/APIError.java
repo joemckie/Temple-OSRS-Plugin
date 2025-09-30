@@ -4,14 +4,16 @@ import com.google.gson.annotations.SerializedName;
 import lombok.Value;
 
 @Value
-public class APIError {
-    @SerializedName("Code")
-    int code;
+public class APIError
+{
+	@SerializedName("Code")
+	int code;
 
-    @SerializedName("Message")
-    String message;
+	@SerializedName("Message")
+	String message;
 
-    public String toString() {
-        return "HTTP " + code + ": " + message;
-    }
+	public String toString()
+	{
+		return "HTTP " + code + ": " + message;
+	}
 }

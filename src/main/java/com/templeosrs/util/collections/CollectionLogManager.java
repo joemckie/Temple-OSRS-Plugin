@@ -29,15 +29,35 @@ import com.templeosrs.TempleOSRSPlugin;
 import com.templeosrs.util.api.QuadraticBackoffStrategy;
 import com.templeosrs.util.collections.autosync.CollectionLogAutoSyncManager;
 import com.templeosrs.util.collections.chatcommands.CollectionLogChatCommandChatMessageSubscriber;
-import com.templeosrs.util.collections.data.*;
+import com.templeosrs.util.collections.data.ObtainedCollectionItem;
+import com.templeosrs.util.collections.data.PlayerData;
+import com.templeosrs.util.collections.data.PlayerDataSubmission;
+import com.templeosrs.util.collections.data.PlayerProfile;
 import com.templeosrs.util.collections.database.CollectionDatabase;
 import com.templeosrs.util.collections.services.CollectionLogService;
 import com.templeosrs.util.collections.utils.CollectionLogCacheData;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import lombok.Getter;
 import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.*;
-import net.runelite.api.events.*;
+import net.runelite.api.Client;
+import net.runelite.api.EnumComposition;
+import net.runelite.api.GameState;
+import net.runelite.api.StructComposition;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
+import net.runelite.api.events.ScriptPreFired;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.EventBus;
@@ -46,18 +66,45 @@ import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ItemManager;
 import org.jetbrains.annotations.Nullable;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
 @Slf4j
 @Singleton
 public class CollectionLogManager
 {
+	/**
+	 * Maps in-game categories to the list of items they contain. Pulled from the in-game cache, where the key is the
+	 * category struct ID (e.g. <a href="https://chisel.weirdgloop.org/structs/index.html?type=structs&id=493">STRUCT #493</a>)
+	 * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
+	 */
+	@Getter
+	private static final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
+
+	/**
+	 * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
+	 */
+	@Getter
+	private static final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
+
+	/**
+	 * Maps top level tabs (e.g. "Bosses") to their containing categories.
+	 * Used to list the available categories when using the "!col help ___" commands
+	 */
+	@Getter
+	private static final Map<Integer, Set<String>> collectionLogCategoryTabSlugs = new LinkedHashMap<>();
+
+	/**
+	 * List of items found in the collection log, computed by reading the in-game enums/structs.
+	 */
+	private final Set<Integer> collectionLogItemsFromCache = new HashSet<>();
+
+	/**
+	 * Unique list of all obtained collection log items
+	 */
+	@Getter
+	private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
+
+	@Getter
+	private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
+
 	@Inject
 	private ItemManager itemManager;
 
@@ -98,41 +145,6 @@ public class CollectionLogManager
 
 	@Nullable
 	private Integer gameTickToSync;
-
-	/**
-	 * List of items found in the collection log, computed by reading the in-game enums/structs.
-	 */
-	private final Set<Integer> collectionLogItemsFromCache = new HashSet<>();
-
-	/**
-	 * Unique list of all obtained collection log items
-	 */
-	@Getter
-	private final Set<ObtainedCollectionItem> obtainedCollectionLogItems = new HashSet<>();
-
-	/**
-	 * Maps in-game categories to the list of items they contain. Pulled from the in-game cache, where the key is the
-	 * category struct ID (e.g. <a href="https://chisel.weirdgloop.org/structs/index.html?type=structs&id=493">STRUCT #493</a>)
-	 * and the value is the contents of the enum found in <a href="https://chisel.weirdgloop.org/structs/index.html?type=params&id=690">PARAM #690</a>.
-	 */
-	@Getter
-	private static final Map<Integer, Set<Integer>> collectionLogCategoryItemMap = new HashMap<>();
-
-	/**
-	 * Maps slugified category names (e.g. guardians_of_the_rift) to their in-game struct ID
-	 */
-	@Getter
-	private static final Map<String, Integer> collectionLogCategoryStructIdMap = new HashMap<>();
-
-	/**
-	 * Maps top level tabs (e.g. "Bosses") to their containing categories.
-	 * Used to list the available categories when using the "!col help ___" commands
-	 */
-	@Getter
-	private static final Map<Integer, Set<String>> collectionLogCategoryTabSlugs = new LinkedHashMap<>();
-
-	@Getter
-	private final QuadraticBackoffStrategy backoffStrategy = new QuadraticBackoffStrategy();
 
 	public void startUp()
 	{

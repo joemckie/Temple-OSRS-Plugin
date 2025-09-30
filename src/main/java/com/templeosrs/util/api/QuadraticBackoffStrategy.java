@@ -5,59 +5,64 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class QuadraticBackoffStrategy {
-    @Getter
-    @Setter
-    private boolean submitting = false;
+public class QuadraticBackoffStrategy
+{
+	@Getter
+	@Setter
+	private boolean submitting = false;
 
-    private int requestAttemptCount = 0;
-    private int cycleCount = 0;
+	private int requestAttemptCount = 0;
+	private int cycleCount = 0;
 
-    public void reset()
-    {
-        submitting = false;
-        requestAttemptCount = 0;
-        cycleCount = 0;
-    }
+	public void reset()
+	{
+		submitting = false;
+		requestAttemptCount = 0;
+		cycleCount = 0;
+	}
 
-    public void beginNewRequestAttempt()
-    {
-        requestAttemptCount++;
-    }
+	public void beginNewRequestAttempt()
+	{
+		requestAttemptCount++;
+	}
 
-    public void finishCycle()
-    {
-        submitting = false;
-    }
+	public void finishCycle()
+	{
+		submitting = false;
+	}
 
-    public boolean shouldSkipRequest()
-    {
-        cycleCount++;
+	public boolean shouldSkipRequest()
+	{
+		cycleCount++;
 
-        final boolean shouldSkip = Math.pow((int) Math.sqrt(cycleCount), 2) != cycleCount;
+		final boolean shouldSkip = Math.pow((int) Math.sqrt(cycleCount), 2) != cycleCount;
 
-        if (shouldSkip) {
-            setSubmitting(false);
+		if (shouldSkip)
+		{
+			setSubmitting(false);
 
-            log.debug("⚠️ Skipping request due to backoff configuration");
-        } else {
-            beginNewRequestAttempt();
-        }
+			log.debug("⚠️ Skipping request due to backoff configuration");
+		}
+		else
+		{
+			beginNewRequestAttempt();
+		}
 
-        return shouldSkip;
-    }
+		return shouldSkip;
+	}
 
-    public boolean isRequestLimitReached()
-    {
-        int maxRetries = 3;
-        final boolean isRequestLimitReached = requestAttemptCount >= maxRetries;
+	public boolean isRequestLimitReached()
+	{
+		int maxRetries = 3;
+		final boolean isRequestLimitReached = requestAttemptCount >= maxRetries;
 
-        if (isRequestLimitReached) {
-            log.error("❌ Maximum number of retries reached; aborting request!");
+		if (isRequestLimitReached)
+		{
+			log.error("❌ Maximum number of retries reached; aborting request!");
 
-            reset();
-        }
+			reset();
+		}
 
-        return isRequestLimitReached;
-    }
+		return isRequestLimitReached;
+	}
 }

@@ -32,8 +32,8 @@ import lombok.Value;
 @AllArgsConstructor
 public class PlayerDataSubmission
 {
-    String username;
-    String profile;
-    long playerHash;
-    PlayerData data;
+	String username;
+	String profile;
+	long playerHash;
+	PlayerData data;
 }

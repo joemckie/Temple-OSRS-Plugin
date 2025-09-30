@@ -2,31 +2,33 @@ package com.templeosrs.util.collections.data;
 
 import com.google.gson.annotations.SerializedName;
 import com.templeosrs.util.api.APIError;
+import javax.annotation.Nullable;
 import lombok.Value;
 
-import javax.annotation.Nullable;
-
 @Value
-public class PlayerInfoResponse {
-    @Value
-    public static class CollectionLog {
-        @Nullable
-        @SerializedName("last_changed")
-        String lastChanged;
-    }
+public class PlayerInfoResponse
+{
+	@Nullable
+	Data data;
 
-    @Value
-    public static class Data {
-        @SerializedName("collection_log")
-        CollectionLog collectionLog;
+	@Nullable
+	APIError error;
 
-        @SerializedName("player_name_with_capitalization")
-        String playerNameWithCapitalization;
-    }
+	@Value
+	public static class CollectionLog
+	{
+		@Nullable
+		@SerializedName("last_changed")
+		String lastChanged;
+	}
 
-    @Nullable
-    Data data;
+	@Value
+	public static class Data
+	{
+		@SerializedName("collection_log")
+		CollectionLog collectionLog;
 
-    @Nullable
-    APIError error;
+		@SerializedName("player_name_with_capitalization")
+		String playerNameWithCapitalization;
+	}
 }
